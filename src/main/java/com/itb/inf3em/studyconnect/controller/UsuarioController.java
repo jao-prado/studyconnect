@@ -2,9 +2,11 @@ package com.itb.inf3em.studyconnect.controller;
 
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,36 +15,23 @@ import java.util.List;
 @RequestMapping("api/v1/usuarios")
 public class UsuarioController {
 
-    List<Usuario> usuarios = new ArrayList<>();
+    @Autowired
+    private UsuarioRepository usuarioRepository;
 
     @GetMapping
-    public List<Usuario> findAll() {
+    public ResponseEntity<List<Usuario>> ListarTodos() {
 
-        Usuario u1 = new Usuario();
-        u1.setNome("João Pedro");
-        u1.setEmail("joao@studyconnect.com");
-        u1.setSenha("123456");
-        u1.setTipoUsuario(TipoUsuario.ALUNO);
-        u1.setAtivo(true);
+        return ResponseEntity.ok(usuarioRepository.findAll());
 
-        Usuario u2 = new Usuario();
-        u2.setNome("Carlos Silva");
-        u2.setEmail("carlos@studyconnect.com");
-        u2.setSenha("123456");
-        u2.setTipoUsuario(TipoUsuario.PROFESSOR);
-        u2.setAtivo(true);
-
-        Usuario u3 = new Usuario();
-        u3.setNome("Ana Souza");
-        u3.setEmail("ana@studyconnect.com");
-        u3.setSenha("123456");
-        u3.setTipoUsuario(TipoUsuario.ADMIN);
-        u3.setAtivo(true);
-
-        usuarios.add(u1);
-        usuarios.add(u2);
-        usuarios.add(u3);
-
-        return usuarios;
     }
+
+
+    @PostMapping
+    public ResponseEntity<Usuario> CadastrarUsuario(@RequestBody Usuario usuario) {
+
+        Usuario novo = usuarioRepository.save(usuario);
+        return ResponseEntity.status(HttpStatus.CREATED).body(novo);
+    }
+
+
 }
