@@ -1,10 +1,10 @@
 package com.itb.inf3em.studyconnect.model.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+
 import java.util.List;
-
-
 
 @Entity
 @Table(name = "Usuario")
@@ -31,12 +31,15 @@ public class Usuario {
     private boolean ativo;
 
 
-    @JsonIgnore
     @OneToMany(mappedBy = "professor")
+    @JsonManagedReference
     private List<Curso> cursos;
 
+
     @OneToMany(mappedBy = "usuario")
+    @JsonManagedReference
     private List<Certificado> certificados;
+
 
     public Long getId() {
         return id;

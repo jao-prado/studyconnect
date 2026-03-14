@@ -1,47 +1,17 @@
-package com.itb.inf3em.studyconnect.model.entity;
-
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import jakarta.persistence.*;
+package com.itb.inf3em.studyconnect.model.dto;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "Certificado")
-public class Certificado {
+public class CertificadoDTO {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(length = 45, nullable = false)
     private String nome;
-
-    @Column(length = 100)
     private String descricao;
-
-    @Column(length = 20, nullable = false)
-    private String nivel; // NOVO CAMPO
-
-    @ManyToOne
-    @JoinColumn(name = "usuario_id", nullable = false)
-    @JsonBackReference
-    private Usuario usuario;
-
-    @Column(nullable = false)
+    private String nivel;
+    private Long usuarioId;
     private LocalDateTime dataEmissao;
-
-    @Column(nullable = false)
     private boolean ativo;
 
     // Getters e Setters
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public String getNome() {
         return nome;
     }
@@ -66,12 +36,12 @@ public class Certificado {
         this.nivel = nivel;
     }
 
-    public Usuario getUsuario() {
-        return usuario;
+    public Long getUsuarioId() {
+        return usuarioId;
     }
 
-    public void setUsuario(Usuario usuario) {
-        this.usuario = usuario;
+    public void setUsuarioId(Long usuarioId) {
+        this.usuarioId = usuarioId;
     }
 
     public LocalDateTime getDataEmissao() {

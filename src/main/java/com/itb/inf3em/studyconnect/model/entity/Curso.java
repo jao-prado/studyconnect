@@ -1,5 +1,7 @@
 package com.itb.inf3em.studyconnect.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 
 import java.util.List;
@@ -27,12 +29,17 @@ public class Curso {
     @Column(nullable = false)
     private boolean ativo;
 
+
     @ManyToOne
     @JoinColumn(name = "professor_id")
+    @JsonBackReference
     private Usuario professor;
 
+
     @OneToMany(mappedBy = "curso")
+    @JsonManagedReference
     private List<Material> materiais;
+
 
     public Long getId() {
         return id;

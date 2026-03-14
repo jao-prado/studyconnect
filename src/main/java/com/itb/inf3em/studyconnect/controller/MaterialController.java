@@ -1,5 +1,6 @@
 package com.itb.inf3em.studyconnect.controller;
 
+import com.itb.inf3em.studyconnect.model.dto.MaterialDTO;
 import com.itb.inf3em.studyconnect.model.entity.Material;
 import com.itb.inf3em.studyconnect.model.services.MaterialService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("api/v1/materiais")
@@ -18,88 +18,36 @@ public class MaterialController {
     private MaterialService materialService;
 
     @GetMapping
-    public ResponseEntity<List<Material>> findAll() {
-        return ResponseEntity.ok(materialService.findAll());
-    }
-
-    @PostMapping
-    public ResponseEntity<Material> cadastrarMaterial(@RequestBody Material material) {
-        Material novoMaterial = materialService.save(material);
-        return ResponseEntity.status(HttpStatus.CREATED).body(novoMaterial);
+    public ResponseEntity<List<MaterialDTO>> findAll() {
+        List<MaterialDTO> dtos = materialService.findAll().stream()
+                .map(MaterialDTO::new)
+                .toList();
+        return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Object> findById(@PathVariable String id) {
-        try {
-            return ResponseEntity.ok(materialService.findById(Long.parseLong(id)));
-        } catch (NumberFormatException e) {
-            return ResponseEntity.badRequest().body(
-                    Map.of(
-                            "status", 400,
-                            "error", "Bad request",
-                            "message", "O Id informado não é valido: " + id
-                    )
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(404).body(
-                    Map.of(
-                            "status", 404,
-                            "error", "Not found",
-                            "message", "Material não encontrado com o Id: " + id
-                    )
-            );
-        }
+    public ResponseEntity<MaterialDTO> findById(@PathVariable Long id) {
+        Material material = materialService.findById(id);
+        return ResponseEntity.ok(new MaterialDTO(material));
+    }
+
+    @PostMapping
+    public ResponseEntity<MaterialDTO> cadastrar(@RequestBody Material material) {
+        Material novo = materialService.save(material);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new MaterialDTO(novo));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Object> atualizarMaterial(@PathVariable String id, @RequestBody Material material) {
-        try {
-            return ResponseEntity.ok(materialService.update(Long.parseLong(id), material));
-        } catch (NumberFormatException e) {
-            return ResponseEntity.badRequest().body(
-                    Map.of(
-                            "status", 400,
-                            "error", "Bad request",
-                            "message", "O Id informado não é valido: " + id
-                    )
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(404).body(
-                    Map.of(
-                            "status", 404,
-                            "error", "Not found",
-                            "message", "Material não encontrado com o Id: " + id
-                    )
-            );
-        }
+    public ResponseEntity<MaterialDTO> atualizar(@PathVariable Long id,
+                                                 @RequestBody Material material) {
+        Material atualizado = materialService.update(id, material);
+        return ResponseEntity.ok(new MaterialDTO(atualizado));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Object> deletarMaterial(@PathVariable String id) {
-        try {
-            materialService.delete(Long.parseLong(id));
-            return ResponseEntity.ok().body(
-                    Map.of(
-                            "status", 200,
-                            "message", "Material excluido com sucesso!"
-                    )
-            );
-        } catch (NumberFormatException e) {
-            return ResponseEntity.badRequest().body(
-                    Map.of(
-                            "status", 400,
-                            "error", "Bad request",
-                            "message", "O id informado não é valido: " + id
-                    )
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(404).body(
-                    Map.of(
-                            "status", 404,
-                            "error", "Not found",
-                            "message", "Material não encontrado com o Id: " + id
-                    )
-            );
-        }
+    public ResponseEntity<String> deletar(@PathVariable Long id) {
+        materialService.delete(id);
+        return ResponseEntity.ok("Material excluído com sucesso!");
     }
 }

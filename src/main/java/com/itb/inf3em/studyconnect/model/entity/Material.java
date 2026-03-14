@@ -1,5 +1,6 @@
 package com.itb.inf3em.studyconnect.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 
 @Entity
@@ -22,9 +23,12 @@ public class Material {
     @Column(nullable = false)
     private boolean ativo;
 
+
     @ManyToOne
     @JoinColumn(name = "curso_id")
+    @JsonBackReference
     private Curso curso;
+
 
     public Long getId() {
         return id;

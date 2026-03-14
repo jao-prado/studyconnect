@@ -1,33 +1,53 @@
 package com.itb.inf3em.studyconnect.controller;
 
+import com.itb.inf3em.studyconnect.model.dto.CertificadoDTO;
 import com.itb.inf3em.studyconnect.model.entity.Certificado;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.itb.inf3em.studyconnect.model.services.CertificadoService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("api/v1/certificados")
+@RequestMapping("/api/v1/certificados")
 public class CertificadoController {
 
-    List<Certificado> certificados = new ArrayList<>();
+    @Autowired
+    private CertificadoService certificadoService;
 
     @GetMapping
-    public List<Certificado> findAll() {
+    public ResponseEntity<List<Certificado>> findAll() {
+        return ResponseEntity.ok(certificadoService.findAll());
+    }
 
-        Certificado c1 = new Certificado();
-        c1.setNome("Certificado de Java");
-        c1.setDescricao("Certificado de conclusão do curso de Java");
+    @GetMapping("/{id}")
+    public ResponseEntity<Object> findById(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(certificadoService.findById(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(Map.of(
+                    "status", 404,
+                    "error", "Not Found",
+                    "message", e.getMessage()
+            ));
+        }
+    }
 
-        Certificado c2 = new Certificado();
-        c2.setNome("Certificado de Banco de Dados");
-        c2.setDescricao("Certificado de conclusão do curso de SQL");
+    @PostMapping
+    public ResponseEntity<Certificado> cadastrar(@RequestBody CertificadoDTO dto) {
+        Certificado cert = certificadoService.save(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(cert);
+    }
 
-        certificados.add(c1);
-        certificados.add(c2);
-
-        return certificados;
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Object> delete(@PathVariable Long id) {
+        certificadoService.delete(id);
+        return ResponseEntity.ok(Map.of(
+                "status", 200,
+                "message", "Certificado excluído com sucesso"
+        ));
     }
 }
