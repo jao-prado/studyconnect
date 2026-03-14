@@ -1,6 +1,7 @@
 package com.itb.inf3em.studyconnect.model.entity;
 
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 
 @Entity
