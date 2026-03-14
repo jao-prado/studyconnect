@@ -1,7 +1,10 @@
 package com.itb.inf3em.studyconnect.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.util.List;
+
+
 
 @Entity
 @Table(name = "Usuario")
@@ -27,6 +30,8 @@ public class Usuario {
     @Column(nullable = false)
     private boolean ativo;
 
+
+    @JsonIgnore
     @OneToMany(mappedBy = "professor")
     private List<Curso> cursos;
 
