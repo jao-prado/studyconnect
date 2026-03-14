@@ -6,5 +6,5 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface CertificadoRepository extends CrudRepository<Material,Integer> {
+public interface CertificadoRepository extends CrudRepository<Material, Long> {
 }
