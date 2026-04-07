@@ -30,6 +30,7 @@ public class AuthService {
         }
 
         return new LoginResponseDTO(
+                usuario.getId(),
                 usuario.getNome(),
                 usuario.getTipoUsuario().name()
         );
