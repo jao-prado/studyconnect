@@ -27,23 +27,20 @@ public class Turma {
     @Column(length = 50)
     private String nivel;  // Fundamental, Médio, Superior, etc.
 
-    @Column(nullable = false)
+    @Column(name = "professor_id", nullable = false)
     private Long professorId;
 
-    @Column(nullable = false)
+    @Column(name = "professor_nome", nullable = false)
     private String professorNome;
 
-    @Column(name = "criada_em", nullable = false)
+    @Column(name = "criada_em", nullable = false, updatable = false, insertable = false)
     private LocalDateTime criadaEm;
 
-    @Column(name = "atualizada_em")
+    @Column(name = "atualizada_em", nullable = false, insertable = false, updatable = false)
     private LocalDateTime atualizadaEm;
 
     // Constructors
-    public Turma() {
-        this.criadaEm = LocalDateTime.now();
-        this.atualizadaEm = LocalDateTime.now();
-    }
+    public Turma() {}
 
     public Turma(String nome, String descricao, String codigo, String tipo, String nivel, Long professorId, String professorNome) {
         this.nome = nome;
@@ -53,7 +50,17 @@ public class Turma {
         this.nivel = nivel;
         this.professorId = professorId;
         this.professorNome = professorNome;
-        this.criadaEm = LocalDateTime.now();
+    }
+
+    // JPA Lifecycle Callbacks
+    @PrePersist
+    protected void onCreate() {
+        if (this.criadaEm == null) this.criadaEm = LocalDateTime.now();
+        if (this.atualizadaEm == null) this.atualizadaEm = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
         this.atualizadaEm = LocalDateTime.now();
     }
 

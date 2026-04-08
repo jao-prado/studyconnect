@@ -10,7 +10,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -54,7 +53,7 @@ public class TurmaService {
      * Validates that the codigo is unique and professorId exists.
      */
     public Turma createTurma(Turma turma) {
-        // Validate profesor exists
+        // Validate professor exists
         Usuario professor = usuarioRepository.findById(turma.getProfessorId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
@@ -84,9 +83,12 @@ public class TurmaService {
             );
         }
 
-        // Set timestamps
-        turma.setCriadaEm(LocalDateTime.now());
-        turma.setAtualizadaEm(LocalDateTime.now());
+        if (turma.getProfessorId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "ID do professor é obrigatório."
+            );
+        }
 
         // Set professor nome if not provided
         if (turma.getProfessorNome() == null || turma.getProfessorNome().isEmpty()) {
@@ -97,8 +99,13 @@ public class TurmaService {
             return turmaRepository.save(turma);
         } catch (DataIntegrityViolationException ex) {
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Erro ao criar turma. Código pode estar duplicado."
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Erro ao salvar turma no banco de dados: " + ex.getMostSpecificCause().getMessage()
+            );
+        } catch (Exception ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Erro inesperado ao criar turma: " + ex.getMessage()
             );
         }
     }
@@ -147,8 +154,6 @@ public class TurmaService {
         if (turmaUpdate.getNivel() != null) {
             turmaExistente.setNivel(turmaUpdate.getNivel());
         }
-
-        turmaExistente.setAtualizadaEm(LocalDateTime.now());
 
         return turmaRepository.save(turmaExistente);
     }

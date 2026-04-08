@@ -34,13 +34,11 @@ public class TurmaController {
     /**
      * GET /api/v1/turmas/minhas
      * Get all turmas for the current user (either teaching or enrolled).
-     * Query param: role=teacher|student
+     * Query param: professorId (required for now)
      */
     @GetMapping("/minhas")
-    public ResponseEntity<List<TurmaDTO>> getMyTurmas(@RequestParam(required = false) String role) {
-        // For now, return all turmas. Full implementation would use current user context.
-        // In production, replace with: turmaService.getTurmasByUser(userId, role)
-        List<Turma> turmas = turmaService.getAllTurmas();
+    public ResponseEntity<List<TurmaDTO>> getMyTurmas(@RequestParam Long professorId) {
+        List<Turma> turmas = turmaService.getTurmasByProfessor(professorId);
         List<TurmaDTO> dtos = turmas.stream()
                 .map(TurmaDTO::new)
                 .toList();
