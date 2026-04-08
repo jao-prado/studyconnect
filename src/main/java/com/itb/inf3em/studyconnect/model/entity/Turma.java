@@ -33,10 +33,10 @@ public class Turma {
     @Column(name = "professor_nome", nullable = false)
     private String professorNome;
 
-    @Column(name = "criada_em", nullable = false, updatable = false, insertable = false)
+    @Column(name = "criada_em", nullable = false, updatable = false)
     private LocalDateTime criadaEm;
 
-    @Column(name = "atualizada_em", nullable = false, insertable = false, updatable = false)
+    @Column(name = "atualizada_em", nullable = false)
     private LocalDateTime atualizadaEm;
 
     // Constructors
@@ -55,8 +55,8 @@ public class Turma {
     // JPA Lifecycle Callbacks
     @PrePersist
     protected void onCreate() {
-        if (this.criadaEm == null) this.criadaEm = LocalDateTime.now();
-        if (this.atualizadaEm == null) this.atualizadaEm = LocalDateTime.now();
+        this.criadaEm = LocalDateTime.now();
+        this.atualizadaEm = LocalDateTime.now();
     }
 
     @PreUpdate
