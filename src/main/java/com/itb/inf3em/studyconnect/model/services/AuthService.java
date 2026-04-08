@@ -5,7 +5,9 @@ import com.itb.inf3em.studyconnect.model.dto.LoginResponseDTO;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
@@ -20,13 +22,13 @@ public class AuthService {
         Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(request.getEmail());
 
         if (usuarioOpt.isEmpty()) {
-            throw new RuntimeException("Usuário não encontrado");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não encontrado");
         }
 
         Usuario usuario = usuarioOpt.get();
 
         if (!usuario.getSenha().equals(request.getSenha())) {
-            throw new RuntimeException("Senha inválida");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha inválida");
         }
 
         return new LoginResponseDTO(
