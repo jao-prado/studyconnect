@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Optional;
+import java.util.List;
 
 @Service
 public class AuthService {
@@ -19,16 +19,16 @@ public class AuthService {
 
     public LoginResponseDTO login(LoginRequestDTO request) {
 
-        Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(request.getEmail());
+        List<Usuario> usuarios = usuarioRepository.findAllByEmailOrderByIdAsc(request.getEmail());
 
-        if (usuarioOpt.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não encontrado");
+        if (usuarios.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha incorretos");
         }
 
-        Usuario usuario = usuarioOpt.get();
+        Usuario usuario = usuarios.get(0);
 
         if (!usuario.getSenha().equals(request.getSenha())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha inválida");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha incorretos");
         }
 
         return new LoginResponseDTO(
