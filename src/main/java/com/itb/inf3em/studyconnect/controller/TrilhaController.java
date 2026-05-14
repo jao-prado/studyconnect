@@ -17,94 +17,42 @@ public class TrilhaController {
     @Autowired
     private TrilhaService trilhaService;
 
-    /**
-     * GET /api/v1/trilhas
-     * Get all trilhas (public view).
-     */
+    /** GET /api/v1/trilhas
+     *  GET /api/v1/trilhas?professorId=X  → filtra por professor */
     @GetMapping
-    public ResponseEntity<List<TrilhaDTO>> getAllTrilhas() {
-        List<Trilha> trilhas = trilhaService.getAllTrilhas();
-        List<TrilhaDTO> dtos = trilhas.stream()
-                .map(TrilhaDTO::new)
-                .toList();
-        return ResponseEntity.ok(dtos);
+    public ResponseEntity<List<TrilhaDTO>> findAll(
+            @RequestParam(required = false) Long professorId) {
+        List<Trilha> trilhas = (professorId != null)
+                ? trilhaService.getTrilhasByProfessor(professorId)
+                : trilhaService.getAllTrilhas();
+        return ResponseEntity.ok(trilhas.stream().map(TrilhaDTO::new).toList());
     }
 
-    /**
-     * GET /api/v1/trilhas/minhas
-     * Get all trilhas for the current user (created by professor).
-     * Query param: professorId (required)
-     */
-    @GetMapping("/minhas")
-    public ResponseEntity<List<TrilhaDTO>> getMyTrilhas(@RequestParam Long professorId) {
-        List<Trilha> trilhas = trilhaService.getTrilhasByProfessor(professorId);
-        List<TrilhaDTO> dtos = trilhas.stream()
-                .map(TrilhaDTO::new)
-                .toList();
-        return ResponseEntity.ok(dtos);
-    }
-
-    /**
-     * GET /api/v1/trilhas/professor/{professorId}
-     * Get all trilhas created by a specific professor.
-     */
-    @GetMapping("/professor/{professorId}")
-    public ResponseEntity<List<TrilhaDTO>> getTrilhasByProfessor(@PathVariable Long professorId) {
-        List<Trilha> trilhas = trilhaService.getTrilhasByProfessor(professorId);
-        List<TrilhaDTO> dtos = trilhas.stream()
-                .map(TrilhaDTO::new)
-                .toList();
-        return ResponseEntity.ok(dtos);
-    }
-
-    /**
-     * POST /api/v1/trilhas
-     * Create a new trilha.
-     * Required fields: nome, tipo, nivel, professorId, professorNome
-     */
-    @PostMapping
-    public ResponseEntity<TrilhaDTO> createTrilha(@RequestBody Trilha trilha) {
-        Trilha novaTrilha = trilhaService.createTrilha(trilha);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new TrilhaDTO(novaTrilha));
-    }
-
-    /**
-     * GET /api/v1/trilhas/{id}
-     * Get a specific trilha by ID.
-     */
+    /** GET /api/v1/trilhas/{id} */
     @GetMapping("/{id}")
-    public ResponseEntity<TrilhaDTO> getTrilhaById(@PathVariable Long id) {
-        Trilha trilha = trilhaService.getTrilhaById(id);
-        return ResponseEntity.ok(new TrilhaDTO(trilha));
+    public ResponseEntity<TrilhaDTO> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(new TrilhaDTO(trilhaService.getTrilhaById(id)));
     }
 
-    /**
-     * PUT /api/v1/trilhas/{id}
-     * Update a trilha (professor only).
-     * Requires professorId header or query param for verification.
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<TrilhaDTO> updateTrilha(
-            @PathVariable Long id,
-            @RequestBody Trilha trilhaUpdate,
-            @RequestParam Long professorId) {
+    /** POST /api/v1/trilhas */
+    @PostMapping
+    public ResponseEntity<TrilhaDTO> create(@RequestBody Trilha trilha) {
+        Trilha nova = trilhaService.createTrilha(trilha);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new TrilhaDTO(nova));
+    }
 
-        Trilha atualizada = trilhaService.updateTrilha(id, trilhaUpdate, professorId);
+    /** PUT /api/v1/trilhas/{id} */
+    @PutMapping("/{id}")
+    public ResponseEntity<TrilhaDTO> update(@PathVariable Long id,
+                                            @RequestBody Trilha trilha) {
+        Trilha atualizada = trilhaService.updateTrilha(id, trilha);
         return ResponseEntity.ok(new TrilhaDTO(atualizada));
     }
 
-    /**
-     * DELETE /api/v1/trilhas/{id}
-     * Delete a trilha (professor only).
-     * Requires professorId query param for verification.
-     */
+    /** DELETE /api/v1/trilhas/{id} */
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteTrilha(
-            @PathVariable Long id,
-            @RequestParam Long professorId) {
-
-        trilhaService.deleteTrilha(id, professorId);
+    public ResponseEntity<String> delete(@PathVariable Long id) {
+        trilhaService.deleteTrilha(id);
         return ResponseEntity.ok("Trilha deletada com sucesso.");
     }
 }

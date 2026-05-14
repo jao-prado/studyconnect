@@ -9,7 +9,7 @@ public class MaterialDTO {
     private String descricao;
     private String categoria;
     private boolean ativo;
-    private String curso;
+    private Long trilhaId;
 
     public MaterialDTO(Material material) {
         this.id = material.getId();
@@ -17,14 +17,13 @@ public class MaterialDTO {
         this.descricao = material.getDescricao();
         this.categoria = material.getCategoria();
         this.ativo = material.isAtivo();
-        this.curso = material.getCurso() != null ? material.getCurso().getNome() : null;
+        this.trilhaId = material.getTrilhaId();
     }
-
 
     public Long getId() { return id; }
     public String getTitulo() { return titulo; }
     public String getDescricao() { return descricao; }
     public String getCategoria() { return categoria; }
     public boolean isAtivo() { return ativo; }
-    public String getCurso() { return curso; }
+    public Long getTrilhaId() { return trilhaId; }
 }

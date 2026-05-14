@@ -24,7 +24,10 @@ public class Trilha {
     private String tipo;  // PUBLICA or PRIVADA
 
     @Column(length = 50)
-    private String nivel;  // Fundamental, Médio, Superior, etc.
+    private String nivel;
+
+    @Column(length = 50)
+    private String disciplina;
 
     @Column(name = "professor_id", nullable = false)
     private Long professorId;
@@ -105,6 +108,14 @@ public class Trilha {
 
     public void setNivel(String nivel) {
         this.nivel = nivel;
+    }
+
+    public String getDisciplina() {
+        return disciplina;
+    }
+
+    public void setDisciplina(String disciplina) {
+        this.disciplina = disciplina;
     }
 
     public Long getProfessorId() {

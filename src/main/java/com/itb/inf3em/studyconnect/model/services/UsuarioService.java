@@ -2,11 +2,15 @@ package com.itb.inf3em.studyconnect.model.services;
 
 
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
+import com.itb.inf3em.studyconnect.model.entity.Trilha;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
+import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
@@ -18,6 +22,12 @@ public class UsuarioService {
 
     @Autowired
     private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private TrilhaRepository trilhaRepository;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
 
     public List<Usuario> findAll() {
@@ -83,9 +93,21 @@ public class UsuarioService {
         return deleted;
     }
 
+    @Transactional
     public void delete(long id) {
-        Usuario UsuarioExistente = findById(id);
-        usuarioRepository.delete(UsuarioExistente);
+        findById(id); // valida existencia
+
+        // 1. Tabela legada Curso — sem entidade Java, usa SQL nativo
+        jdbc.update("DELETE FROM Curso WHERE professor_id = ?", id);
+
+        // 2. Trilhas do professor (aulas deletadas em cascata pelo banco)
+        List<Trilha> trilhas = trilhaRepository.findByProfessorId(id);
+        if (!trilhas.isEmpty()) {
+            trilhaRepository.deleteAll(trilhas);
+        }
+
+        // 3. Usuario
+        usuarioRepository.deleteById(id);
     }
 
 }

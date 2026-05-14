@@ -10,6 +10,7 @@ public class TrilhaDTO {
     private String descricao;
     private String tipo;
     private String nivel;
+    private String disciplina;
     private Long professorId;
     private String professorNome;
     private LocalDateTime criadaEm;
@@ -22,6 +23,7 @@ public class TrilhaDTO {
         this.descricao = trilha.getDescricao();
         this.tipo = trilha.getTipo();
         this.nivel = trilha.getNivel();
+        this.disciplina = trilha.getDisciplina();
         this.professorId = trilha.getProfessorId();
         this.professorNome = trilha.getProfessorNome();
         this.criadaEm = trilha.getCriadaEm();
@@ -64,13 +66,11 @@ public class TrilhaDTO {
         this.tipo = tipo;
     }
 
-    public String getNivel() {
-        return nivel;
-    }
+    public String getNivel() { return nivel; }
+    public void setNivel(String nivel) { this.nivel = nivel; }
 
-    public void setNivel(String nivel) {
-        this.nivel = nivel;
-    }
+    public String getDisciplina() { return disciplina; }
+    public void setDisciplina(String disciplina) { this.disciplina = disciplina; }
 
     public Long getProfessorId() {
         return professorId;

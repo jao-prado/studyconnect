@@ -15,10 +15,10 @@ public class Aula {
     @Column(length = 100, nullable = false)
     private String titulo;
 
-    @Column(length = 20, nullable = false)
-    private String tipo;  // TEXTO or VIDEO
+    @Column(length = 20)  // nullable: frontend usa blocos, nao tipo
+    private String tipo;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "NVARCHAR(MAX)")  // blocos JSON
     private String conteudo;
 
     @Column(name = "trilha_id", nullable = false)

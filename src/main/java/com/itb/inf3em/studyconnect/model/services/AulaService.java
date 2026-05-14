@@ -50,49 +50,27 @@ public class AulaService {
      * Create a new aula.
      */
     public Aula createAula(Aula aula) {
-        // Validate trilha exists
-        Trilha trilha = trilhaRepository.findById(aula.getTrilhaId())
+        if (aula.getTrilhaId() == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID da trilha é obrigatório.");
+
+        if (aula.getTitulo() == null || aula.getTitulo().trim().isEmpty())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Título da aula é obrigatório.");
+
+        trilhaRepository.findById(aula.getTrilhaId())
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Trilha não encontrada com o id: " + aula.getTrilhaId()
-                ));
+                        HttpStatus.NOT_FOUND, "Trilha não encontrada com o id: " + aula.getTrilhaId()));
 
-        // Validate required fields
-        if (aula.getTitulo() == null || aula.getTitulo().trim().isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Título da aula é obrigatório."
-            );
-        }
-
-        if (aula.getTipo() == null || aula.getTipo().trim().isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Tipo da aula é obrigatório."
-            );
-        }
-
-        if (aula.getConteudo() == null || aula.getConteudo().trim().isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Conteúdo da aula é obrigatório."
-            );
-        }
-
-        if (aula.getTrilhaId() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "ID da trilha é obrigatório."
-            );
+        // blocos chegam no campo conteudo como JSON string — ja vem serializado do frontend
+        // se conteudo vier nulo, inicializa com objeto vazio
+        if (aula.getConteudo() == null) {
+            aula.setConteudo("{}");
         }
 
         try {
             return aulaRepository.save(aula);
         } catch (Exception ex) {
             throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Erro inesperado ao criar aula: " + ex.getMessage()
-            );
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao criar aula: " + ex.getMessage());
         }
     }
 

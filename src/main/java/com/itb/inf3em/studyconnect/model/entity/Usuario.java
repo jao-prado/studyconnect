@@ -31,11 +31,6 @@ public class Usuario {
     private boolean ativo;
 
 
-    @OneToMany(mappedBy = "professor")
-    @JsonManagedReference
-    private List<Curso> cursos;
-
-
     @OneToMany(mappedBy = "usuario")
     @JsonManagedReference
     private List<Certificado> certificados;
@@ -87,14 +82,6 @@ public class Usuario {
 
     public void setAtivo(boolean ativo) {
         this.ativo = ativo;
-    }
-
-    public List<Curso> getCursos() {
-        return cursos;
-    }
-
-    public void setCursos(List<Curso> cursos) {
-        this.cursos = cursos;
     }
 
     public List<Certificado> getCertificados() {
