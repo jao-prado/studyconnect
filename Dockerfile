@@ -42,12 +42,4 @@ EXPOSE 8080
 #     massiva no startup e sem JIT cada operacao e muito mais lenta.
 #     Com lazy-initialization=true no profile de producao, o JIT completo
 #     e mais eficiente porque compila apenas os beans realmente usados.
-CMD ["java",
-     "-XX:+UseSerialGC",
-     "-Xms64m",
-     "-Xmx256m",
-     "-XX:MaxMetaspaceSize=128m",
-     "-XX:+OptimizeStringConcat",
-     "-Dspring.profiles.active=production",
-     "-jar",
-     "app.jar"]
+CMD ["java", "-XX:+UseSerialGC", "-Xms64m", "-Xmx256m", "-XX:MaxMetaspaceSize=128m", "-XX:+OptimizeStringConcat", "-Dspring.profiles.active=production", "-jar", "app.jar"]
