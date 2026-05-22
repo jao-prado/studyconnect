@@ -28,16 +28,26 @@ EXPOSE 8080
 #     Limita o heap. Sem limite, a JVM pode tentar alocar mais do que o Render
 #     oferece e ser morta pelo OOM killer do container.
 #
-#   -XX:TieredStopAtLevel=1
-#     Desativa o compilador JIT C2 (nivel 4). O C2 faz otimizacoes pesadas
-#     que so valem a pena em apps de longa duracao com alto throughput.
-#     Para TCC no Render Free, o custo de compilacao nao compensa.
-#     Resultado: startup ~30% mais rapido.
+#   -XX:MaxMetaspaceSize=128m
+#     Limita o Metaspace (onde ficam as classes carregadas).
+#     Spring Boot carrega muitas classes via reflection. Sem limite, o Metaspace
+#     pode crescer indefinidamente e consumir RAM do container.
 #
-#   -Dspring.profiles.active=production
-#     Hardcoded aqui para garantir que o profile correto seja sempre ativado,
-#     independente de env vars do Render.
-#     NOTA: ${VAR:-default} nao funciona em CMD array JSON do Docker.
-#     Por isso o valor e literal. O Render tambem injeta SPRING_PROFILES_ACTIVE
-#     via env var, mas esta flag garante o fallback correto.
-CMD ["java", "-XX:+UseSerialGC", "-Xms64m", "-Xmx256m", "-XX:TieredStopAtLevel=1", "-Dspring.profiles.active=production", "-jar", "app.jar"]
+#   -XX:+OptimizeStringConcat
+#     Otimizacao de concatenacao de strings, util para serialization JSON.
+#
+#   REMOVIDO: -XX:TieredStopAtLevel=1
+#     Essa flag desativa o JIT C2, o que parece acelerar o startup mas na
+#     pratica AUMENTA o tempo em apps Spring Boot porque o Spring faz reflection
+#     massiva no startup e sem JIT cada operacao e muito mais lenta.
+#     Com lazy-initialization=true no profile de producao, o JIT completo
+#     e mais eficiente porque compila apenas os beans realmente usados.
+CMD ["java",
+     "-XX:+UseSerialGC",
+     "-Xms64m",
+     "-Xmx256m",
+     "-XX:MaxMetaspaceSize=128m",
+     "-XX:+OptimizeStringConcat",
+     "-Dspring.profiles.active=production",
+     "-jar",
+     "app.jar"]
