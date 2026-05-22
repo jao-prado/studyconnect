@@ -1,10 +1,8 @@
 package com.itb.inf3em.studyconnect.model.repository;
 
-
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -14,6 +12,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     boolean existsByEmail(String email);
 
-    List<Usuario> findAllByEmailOrderByIdAsc(String email);
+    // findAllByEmailOrderByIdAsc removido: email tem unique constraint,
+    // retornar List era desnecessario. Use findByEmail.
 
 }

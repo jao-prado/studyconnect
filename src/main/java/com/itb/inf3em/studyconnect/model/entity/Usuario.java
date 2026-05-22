@@ -31,7 +31,10 @@ public class Usuario {
     private boolean ativo;
 
 
-    @OneToMany(mappedBy = "usuario")
+    // FetchType.LAZY: certificados NAO sao carregados automaticamente junto com o Usuario.
+    // Sem isso, qualquer busca de usuario (inclusive login) dispararia um SELECT extra
+    // na tabela Certificado, mesmo quando nao precisamos deles.
+    @OneToMany(mappedBy = "usuario", fetch = FetchType.LAZY)
     @JsonManagedReference
     private List<Certificado> certificados;
 
