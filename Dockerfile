@@ -40,11 +40,4 @@ EXPOSE 8080
 #     NOTA: ${VAR:-default} nao funciona em CMD array JSON do Docker.
 #     Por isso o valor e literal. O Render tambem injeta SPRING_PROFILES_ACTIVE
 #     via env var, mas esta flag garante o fallback correto.
-CMD ["java",
-     "-XX:+UseSerialGC",
-     "-Xms64m",
-     "-Xmx256m",
-     "-XX:TieredStopAtLevel=1",
-     "-Dspring.profiles.active=production",
-     "-jar",
-     "app.jar"]
+CMD ["java", "-XX:+UseSerialGC", "-Xms64m", "-Xmx256m", "-XX:TieredStopAtLevel=1", "-Dspring.profiles.active=production", "-jar", "app.jar"]
