@@ -323,6 +323,29 @@ SELECT 'Turma'           AS tabela, COUNT(*) AS registros FROM dbo.Turma;
 SELECT 'Material'        AS tabela, COUNT(*) AS registros FROM dbo.Material;
 SELECT 'ProgressoAula'   AS tabela, COUNT(*) AS registros FROM dbo.ProgressoAula;
 
+-- ── 11. Duvida ───────────────────────────────────────────────
+IF OBJECT_ID(N'dbo.Duvida', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Duvida (
+        id            BIGINT IDENTITY(1,1) PRIMARY KEY,
+        aluno_id      BIGINT         NOT NULL,
+        aula_id       BIGINT         NOT NULL,
+        trilha_id     BIGINT         NOT NULL,
+        mensagem      NVARCHAR(1000) NOT NULL,
+        resposta      NVARCHAR(1000) NULL,
+        status        NVARCHAR(20)   NOT NULL CONSTRAINT DF_Duvida_status DEFAULT 'PENDENTE',
+        criada_em     DATETIME2      NOT NULL DEFAULT GETDATE(),
+        respondida_em DATETIME2      NULL,
+        CONSTRAINT FK_Duvida_Aluno  FOREIGN KEY (aluno_id)  REFERENCES dbo.Usuario(id),
+        CONSTRAINT FK_Duvida_Aula   FOREIGN KEY (aula_id)   REFERENCES dbo.Aula(id) ON DELETE CASCADE,
+        CONSTRAINT FK_Duvida_Trilha FOREIGN KEY (trilha_id) REFERENCES dbo.Trilha(id)
+    );
+    CREATE INDEX idx_duvida_trilha ON dbo.Duvida(trilha_id);
+    CREATE INDEX idx_duvida_aula   ON dbo.Duvida(aula_id);
+    CREATE INDEX idx_duvida_aluno  ON dbo.Duvida(aluno_id);
+    PRINT 'OK: Duvida criada';
+END
+
 -- Dados completos
 SELECT * FROM dbo.Usuario;
 SELECT * FROM dbo.Trilha;

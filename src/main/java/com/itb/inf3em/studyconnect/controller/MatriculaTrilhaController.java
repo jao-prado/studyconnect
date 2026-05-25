@@ -83,6 +83,15 @@ public class MatriculaTrilhaController {
     }
 
     /**
+     * GET /api/v1/matriculas/trilha/{trilhaId}/estatisticas
+     * Retorna stats da trilha para o professor
+     */
+    @GetMapping("/trilha/{trilhaId}/estatisticas")
+    public ResponseEntity<Map<String, Object>> estatisticasTrilha(@PathVariable Long trilhaId) {
+        return ResponseEntity.ok(matriculaService.estatisticasTrilha(trilhaId));
+    }
+
+    /**
      * GET /api/v1/matriculas/existe?alunoId=X&trilhaId=Y
      */
     @GetMapping("/existe")

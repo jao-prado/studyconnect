@@ -15,4 +15,6 @@ public interface AulaRepository extends JpaRepository<Aula, Long> {
     List<Aula> findByTrilhaIdOrderByOrdem(Long trilhaId);
 
     long countByTrilhaId(Long trilhaId);
+
+    long countByTrilhaIdAndStatus(Long trilhaId, String status);
 }

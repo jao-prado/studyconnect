@@ -3,7 +3,9 @@ package com.itb.inf3em.studyconnect.model.services;
 import com.itb.inf3em.studyconnect.model.dto.MatriculaAlunoDTO;
 import com.itb.inf3em.studyconnect.model.entity.MatriculaTrilha;
 import com.itb.inf3em.studyconnect.model.repository.AulaRepository;
+import com.itb.inf3em.studyconnect.model.repository.DuvidaRepository;
 import com.itb.inf3em.studyconnect.model.repository.MatriculaTrilhaRepository;
+import com.itb.inf3em.studyconnect.model.repository.ProgressoAulaRepository;
 import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +31,12 @@ public class MatriculaTrilhaService {
 
     @Autowired
     private AulaRepository aulaRepository;
+
+    @Autowired
+    private ProgressoAulaRepository progressoAulaRepository;
+
+    @Autowired
+    private DuvidaRepository duvidaRepository;
 
     public MatriculaTrilha matricular(Long alunoId, Long trilhaId) {
         // Valida existência
@@ -103,16 +111,83 @@ public class MatriculaTrilhaService {
                 (com.itb.inf3em.studyconnect.model.entity.Trilha t) ->
                     matriculaRepository.countByTrilhaIdAndAtivoTrue(t.getId())).reversed())
             .limit(3)
-            .map(t -> Map.of(
-                "id",     t.getId(),
-                "nome",   t.getNome(),
-                "alunos", matriculaRepository.countByTrilhaIdAndAtivoTrue(t.getId()),
-                "aulas",  aulaRepository.countByTrilhaId(t.getId())
-            ))
+            .map(t -> {
+                long alunos = matriculaRepository.countByTrilhaIdAndAtivoTrue(t.getId());
+                var  aulaIds = aulaRepository.findByTrilhaIdOrderByOrdem(t.getId())
+                    .stream().map(a -> a.getId()).toList();
+                long totalAulasTrilha = aulaIds.size();
+                long conclusoes = 0;
+                if (alunos > 0 && totalAulasTrilha > 0) {
+                    for (var m : matriculaRepository.findByTrilhaIdAndAtivoTrue(t.getId())) {
+                        conclusoes += progressoAulaRepository
+                            .countByAlunoIdAndAulaIdInAndConcluidaTrue(m.getAlunoId(), aulaIds);
+                    }
+                }
+                long taxa = (alunos > 0 && totalAulasTrilha > 0)
+                    ? Math.round((conclusoes * 100.0) / (alunos * totalAulasTrilha)) : 0;
+                return Map.of(
+                    "id",            t.getId(),
+                    "nome",          t.getNome(),
+                    "alunos",        alunos,
+                    "aulas",         totalAulasTrilha,
+                    "taxaConclusao", taxa
+                );
+            })
             .toList();
         resumo.put("trilhas", top3);
 
+        long totalRascunhos = trilhas.stream()
+            .mapToLong(t -> aulaRepository.countByTrilhaIdAndStatus(t.getId(), "RASCUNHO"))
+            .sum();
+        resumo.put("totalRascunhos", totalRascunhos);
+
         return resumo;
+    }
+
+    public Map<String, Object> estatisticasTrilha(Long trilhaId) {
+        long totalAlunos = matriculaRepository.countByTrilhaIdAndAtivoTrue(trilhaId);
+        var aulaIds = aulaRepository.findByTrilhaIdOrderByOrdem(trilhaId)
+            .stream().map(a -> a.getId()).toList();
+        long totalAulas = aulaIds.size();
+
+        long totalConclusoes = 0;
+        long totalProgresso  = 0;
+        if (totalAulas > 0 && totalAlunos > 0) {
+            var alunos = matriculaRepository.findByTrilhaIdAndAtivoTrue(trilhaId);
+            for (var m : alunos) {
+                totalConclusoes += progressoAulaRepository
+                    .countByAlunoIdAndAulaIdInAndConcluidaTrue(m.getAlunoId(), aulaIds);
+            }
+            totalProgresso = totalAlunos * totalAulas;
+        }
+
+        long taxaConclusao = totalProgresso > 0
+            ? Math.round((totalConclusoes * 100.0) / totalProgresso) : 0;
+
+        long duvidasPendentes  = duvidaRepository.countByTrilhaIdAndStatus(trilhaId, "PENDENTE");
+        long duvidasTotais     = duvidaRepository.findByTrilhaIdOrderByCriadaEmDesc(trilhaId).size();
+
+        var aulaProgresso = aulaRepository.findByTrilhaIdOrderByOrdem(trilhaId).stream().map(a -> {
+            long concluiram = totalAlunos > 0
+                ? matriculaRepository.findByTrilhaIdAndAtivoTrue(trilhaId).stream()
+                    .filter(m -> progressoAulaRepository
+                        .findByAlunoIdAndAulaId(m.getAlunoId(), a.getId())
+                        .map(p -> p.isConcluida()).orElse(false))
+                    .count()
+                : 0;
+            long pct = totalAlunos > 0 ? Math.round((concluiram * 100.0) / totalAlunos) : 0;
+            return Map.of("aulaId", a.getId(), "titulo", a.getTitulo(), "pct", pct, "concluiram", concluiram);
+        }).toList();
+
+        return Map.of(
+            "totalAlunos",      totalAlunos,
+            "totalAulas",       totalAulas,
+            "totalConclusoes",  totalConclusoes,
+            "taxaConclusao",    taxaConclusao,
+            "duvidasPendentes", duvidasPendentes,
+            "duvidasTotais",    duvidasTotais,
+            "aulaProgresso",    aulaProgresso
+        );
     }
 
     public List<MatriculaTrilha> listarPorAluno(Long alunoId) {
