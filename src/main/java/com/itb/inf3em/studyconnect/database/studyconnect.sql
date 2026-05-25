@@ -61,6 +61,7 @@ BEGIN
         conteudo      NVARCHAR(MAX),
         trilha_id     BIGINT        NOT NULL,
         ordem         INT,
+        status        NVARCHAR(20)  NOT NULL CONSTRAINT DF_Aula_status DEFAULT 'PUBLICADA',
         criada_em     DATETIME2     NOT NULL DEFAULT GETDATE(),
         atualizada_em DATETIME2     NOT NULL DEFAULT GETDATE(),
         CONSTRAINT FK_Aula_Trilha
@@ -184,7 +185,30 @@ BEGIN
     PRINT 'OK: Aula.tipo agora aceita NULL';
 END
 
--- 6. Migrar Material: curso_id → trilha_id
+-- 6. Aula.status (PUBLICADA | RASCUNHO)
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.Aula') AND name = 'status'
+)
+BEGIN
+    ALTER TABLE dbo.Aula ADD status NVARCHAR(20) NOT NULL CONSTRAINT DF_Aula_status DEFAULT 'PUBLICADA';
+    PRINT 'OK: Aula.status adicionada';
+END
+ELSE
+BEGIN
+    -- Corrige NULLs caso a coluna tenha sido criada sem DEFAULT pelo Hibernate
+    UPDATE dbo.Aula SET status = 'PUBLICADA' WHERE status IS NULL;
+    IF NOT EXISTS (
+        SELECT 1 FROM sys.default_constraints
+        WHERE parent_object_id = OBJECT_ID(N'dbo.Aula') AND name = 'DF_Aula_status'
+    )
+    BEGIN
+        ALTER TABLE dbo.Aula ADD CONSTRAINT DF_Aula_status DEFAULT 'PUBLICADA' FOR status;
+        PRINT 'OK: DF_Aula_status constraint adicionada';
+    END
+END
+
+-- 7. Migrar Material: curso_id → trilha_id
 IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Material_Curso')
 BEGIN
     ALTER TABLE dbo.Material DROP CONSTRAINT FK_Material_Curso;
@@ -207,7 +231,7 @@ BEGIN
     PRINT 'OK: FK_Material_Trilha criada';
 END
 
--- 7. MatriculaTrilha — adicionar se tabela já existia sem a constraint UNIQUE
+-- 8. MatriculaTrilha — adicionar se tabela já existia sem a constraint UNIQUE
 IF NOT EXISTS (
     SELECT 1 FROM sys.indexes
     WHERE name = 'UQ_Matricula_Aluno_Trilha' AND object_id = OBJECT_ID(N'dbo.MatriculaTrilha')

@@ -13,6 +13,7 @@ public class AulaDTO {
     private Integer ordem;
     private LocalDateTime criadaEm;
     private LocalDateTime atualizadaEm;
+    private String status;
 
     // Constructor from Aula entity
     public AulaDTO(Aula aula) {
@@ -24,6 +25,7 @@ public class AulaDTO {
         this.ordem = aula.getOrdem();
         this.criadaEm = aula.getCriadaEm();
         this.atualizadaEm = aula.getAtualizadaEm();
+        this.status = aula.getStatus();
     }
 
     // Default constructor
@@ -92,5 +94,13 @@ public class AulaDTO {
 
     public void setAtualizadaEm(LocalDateTime atualizadaEm) {
         this.atualizadaEm = atualizadaEm;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

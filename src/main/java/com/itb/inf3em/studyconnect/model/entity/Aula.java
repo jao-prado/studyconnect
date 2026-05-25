@@ -38,6 +38,9 @@ public class Aula {
     @Column(name = "atualizada_em", nullable = false)
     private LocalDateTime atualizadaEm;
 
+    @Column(length = 20, nullable = false, columnDefinition = "NVARCHAR(20) NOT NULL DEFAULT 'PUBLICADA'")
+    private String status = "PUBLICADA";  // PUBLICADA | RASCUNHO
+
     // Constructors
     public Aula() {}
 
@@ -54,6 +57,7 @@ public class Aula {
     protected void onCreate() {
         this.criadaEm = LocalDateTime.now();
         this.atualizadaEm = LocalDateTime.now();
+        if (this.status == null) this.status = "PUBLICADA";
     }
 
     @PreUpdate
@@ -132,5 +136,13 @@ public class Aula {
 
     public void setAtualizadaEm(LocalDateTime atualizadaEm) {
         this.atualizadaEm = atualizadaEm;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

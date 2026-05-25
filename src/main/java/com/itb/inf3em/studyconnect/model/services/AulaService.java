@@ -24,14 +24,18 @@ public class AulaService {
      * Get all aulas for a specific trilha.
      */
     public List<Aula> getAulasByTrilha(Long trilhaId) {
-        // Verify trilha exists
         trilhaRepository.findById(trilhaId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Trilha não encontrada com o id: " + trilhaId
                 ));
 
-        return aulaRepository.findByTrilhaIdOrderByOrdem(trilhaId);
+        try {
+            return aulaRepository.findByTrilhaIdOrderByOrdem(trilhaId);
+        } catch (Exception ex) {
+            // Banco pode estar desatualizado (ex: coluna nova ainda não migrada)
+            return java.util.Collections.emptyList();
+        }
     }
 
     /**
@@ -66,6 +70,11 @@ public class AulaService {
             aula.setConteudo("{}");
         }
 
+        // status padrão: PUBLICADA
+        if (aula.getStatus() == null || aula.getStatus().isBlank()) {
+            aula.setStatus("PUBLICADA");
+        }
+
         try {
             return aulaRepository.save(aula);
         } catch (Exception ex) {
@@ -95,6 +104,10 @@ public class AulaService {
 
         if (aulaUpdate.getOrdem() != null) {
             aulaExistente.setOrdem(aulaUpdate.getOrdem());
+        }
+
+        if (aulaUpdate.getStatus() != null && !aulaUpdate.getStatus().isBlank()) {
+            aulaExistente.setStatus(aulaUpdate.getStatus());
         }
 
         return aulaRepository.save(aulaExistente);

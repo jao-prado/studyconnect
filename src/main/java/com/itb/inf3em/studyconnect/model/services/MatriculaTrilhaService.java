@@ -2,6 +2,7 @@ package com.itb.inf3em.studyconnect.model.services;
 
 import com.itb.inf3em.studyconnect.model.dto.MatriculaAlunoDTO;
 import com.itb.inf3em.studyconnect.model.entity.MatriculaTrilha;
+import com.itb.inf3em.studyconnect.model.repository.AulaRepository;
 import com.itb.inf3em.studyconnect.model.repository.MatriculaTrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
@@ -25,6 +26,9 @@ public class MatriculaTrilhaService {
 
     @Autowired
     private TrilhaRepository trilhaRepository;
+
+    @Autowired
+    private AulaRepository aulaRepository;
 
     public MatriculaTrilha matricular(Long alunoId, Long trilhaId) {
         // Valida existência
@@ -74,6 +78,9 @@ public class MatriculaTrilhaService {
         long totalAlunos = trilhas.stream()
             .mapToLong(t -> matriculaRepository.countByTrilhaIdAndAtivoTrue(t.getId()))
             .sum();
+        long totalAulas = trilhas.stream()
+            .mapToLong(t -> aulaRepository.countByTrilhaId(t.getId()))
+            .sum();
         var trilhaComMaisAlunos = trilhas.stream()
             .max(java.util.Comparator.comparingLong(
                 t -> matriculaRepository.countByTrilhaIdAndAtivoTrue(t.getId())))
@@ -82,12 +89,29 @@ public class MatriculaTrilhaService {
         Map<String, Object> resumo = new HashMap<>();
         resumo.put("totalTrilhas",   trilhas.size());
         resumo.put("totalAlunos",    totalAlunos);
+        resumo.put("totalAulas",     totalAulas);
         resumo.put("trilhasAtivas",  trilhas.stream().filter(t -> "PUBLICA".equals(t.getTipo())).count());
         resumo.put("trilhaDestaque", trilhaComMaisAlunos != null ? Map.of(
             "id",   trilhaComMaisAlunos.getId(),
             "nome", trilhaComMaisAlunos.getNome(),
             "alunos", matriculaRepository.countByTrilhaIdAndAtivoTrue(trilhaComMaisAlunos.getId())
         ) : null);
+
+        // top 3 trilhas por alunos matriculados
+        var top3 = trilhas.stream()
+            .sorted(java.util.Comparator.comparingLong(
+                (com.itb.inf3em.studyconnect.model.entity.Trilha t) ->
+                    matriculaRepository.countByTrilhaIdAndAtivoTrue(t.getId())).reversed())
+            .limit(3)
+            .map(t -> Map.of(
+                "id",     t.getId(),
+                "nome",   t.getNome(),
+                "alunos", matriculaRepository.countByTrilhaIdAndAtivoTrue(t.getId()),
+                "aulas",  aulaRepository.countByTrilhaId(t.getId())
+            ))
+            .toList();
+        resumo.put("trilhas", top3);
+
         return resumo;
     }
 

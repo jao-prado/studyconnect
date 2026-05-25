@@ -22,10 +22,14 @@ public class UsuarioDTO {
         this.tipoUsuario = usuario.getTipoUsuario().name();
         this.ativo = usuario.isAtivo();
 
-        if (usuario.getCertificados() != null) {
-            this.certificados = usuario.getCertificados().stream()
-                    .map(Certificado::getNome)
-                    .collect(Collectors.toList());
+        try {
+            if (usuario.getCertificados() != null) {
+                this.certificados = usuario.getCertificados().stream()
+                        .map(Certificado::getNome)
+                        .collect(Collectors.toList());
+            }
+        } catch (Exception ignored) {
+            // certificados LAZY não carregados — omite sem quebrar a resposta
         }
     }
 
