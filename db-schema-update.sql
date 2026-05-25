@@ -368,3 +368,5 @@ FROM dbo.MatriculaTrilha m
 JOIN dbo.Usuario u ON u.id = m.aluno_id
 JOIN dbo.Trilha  t ON t.id = m.trilha_id
 ORDER BY m.data_matricula DESC;
+
+-- teste
