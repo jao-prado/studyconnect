@@ -135,6 +135,47 @@ BEGIN
     );
 END
 
+-- ── 9. ProgressoAula ─────────────────────────────────────────
+IF OBJECT_ID(N'dbo.ProgressoAula', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ProgressoAula (
+        id           BIGINT IDENTITY(1,1) PRIMARY KEY,
+        aluno_id     BIGINT    NOT NULL,
+        aula_id      BIGINT    NOT NULL,
+        concluida    BIT       NOT NULL DEFAULT 0,
+        concluida_em DATETIME2 NULL,
+        CONSTRAINT FK_Progresso_Aluno
+            FOREIGN KEY (aluno_id) REFERENCES dbo.Usuario(id),
+        CONSTRAINT FK_Progresso_Aula
+            FOREIGN KEY (aula_id)  REFERENCES dbo.Aula(id) ON DELETE CASCADE,
+        CONSTRAINT UQ_Progresso_Aluno_Aula
+            UNIQUE (aluno_id, aula_id)
+    );
+    CREATE INDEX idx_progresso_aluno ON dbo.ProgressoAula(aluno_id);
+    CREATE INDEX idx_progresso_aula  ON dbo.ProgressoAula(aula_id);
+    PRINT 'OK: ProgressoAula criada';
+END
+
+-- ── 10. PerfilAprendizado ────────────────────────────────────
+IF OBJECT_ID(N'dbo.PerfilAprendizado', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PerfilAprendizado (
+        id           BIGINT IDENTITY(1,1) PRIMARY KEY,
+        aluno_id     BIGINT        NOT NULL UNIQUE,
+        objetivo     NVARCHAR(30),
+        nivel        NVARCHAR(30),
+        horas_semana INT,
+        meta_semanal INT,
+        ritmo        NVARCHAR(20),
+        interesses   NVARCHAR(500),
+        dificuldades NVARCHAR(500),
+        CONSTRAINT FK_Perfil_Aluno
+            FOREIGN KEY (aluno_id) REFERENCES dbo.Usuario(id) ON DELETE CASCADE
+    );
+    CREATE INDEX idx_perfil_aluno ON dbo.PerfilAprendizado(aluno_id);
+    PRINT 'OK: PerfilAprendizado criada';
+END
+
 -- ============================================================
 -- MIGRATIONS — idempotentes, seguro re-executar
 -- ============================================================
@@ -196,7 +237,6 @@ BEGIN
 END
 ELSE
 BEGIN
-    -- Corrige NULLs caso a coluna tenha sido criada sem DEFAULT pelo Hibernate
     UPDATE dbo.Aula SET status = 'PUBLICADA' WHERE status IS NULL;
     IF NOT EXISTS (
         SELECT 1 FROM sys.default_constraints
@@ -281,6 +321,7 @@ SELECT 'MatriculaTrilha' AS tabela, COUNT(*) AS registros FROM dbo.MatriculaTril
 SELECT 'Certificado'     AS tabela, COUNT(*) AS registros FROM dbo.Certificado;
 SELECT 'Turma'           AS tabela, COUNT(*) AS registros FROM dbo.Turma;
 SELECT 'Material'        AS tabela, COUNT(*) AS registros FROM dbo.Material;
+SELECT 'ProgressoAula'   AS tabela, COUNT(*) AS registros FROM dbo.ProgressoAula;
 
 -- Dados completos
 SELECT * FROM dbo.Usuario;
@@ -290,6 +331,7 @@ SELECT * FROM dbo.MatriculaTrilha;
 SELECT * FROM dbo.Certificado;
 SELECT * FROM dbo.Turma;
 SELECT * FROM dbo.Material;
+SELECT * FROM dbo.ProgressoAula;
 
 -- Matrículas com nome do aluno e da trilha (join útil para debug)
 SELECT
