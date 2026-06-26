@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -19,8 +20,19 @@ public class AuthService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    @Autowired
+    private BCryptPasswordEncoder passwordEncoder;
+
+    @Autowired
+    private CredentialValidationService credentialValidationService;
+
     public LoginResponseDTO login(LoginRequestDTO request) {
         long t0 = System.currentTimeMillis();
+
+        credentialValidationService.validateEmail(request.getEmail());
+        if (request.getSenha() == null || request.getSenha().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha incorretos");
+        }
 
         // findByEmail usa o indice UNIQUE do email: uma unica query, sem ORDER BY, sem List
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
@@ -28,7 +40,7 @@ public class AuthService {
 
         log.info("[AUTH] query DB: {}ms", System.currentTimeMillis() - t0);
 
-        if (!usuario.getSenha().equals(request.getSenha())) {
+        if (!passwordEncoder.matches(request.getSenha(), usuario.getSenha())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha incorretos");
         }
 
