@@ -34,7 +34,6 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha incorretos");
         }
 
-        // findByEmail usa o indice UNIQUE do email: uma unica query, sem ORDER BY, sem List
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha incorretos"));
 
@@ -42,6 +41,10 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.getSenha(), usuario.getSenha())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha incorretos");
+        }
+
+        if (!usuario.isAtivo()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "E-mail nao verificado. Verifique sua caixa de entrada.");
         }
 
         log.info("[AUTH] login total: {}ms", System.currentTimeMillis() - t0);

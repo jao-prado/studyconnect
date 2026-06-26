@@ -4,6 +4,7 @@ import com.itb.inf3em.studyconnect.model.entity.Trilha;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
+import com.itb.inf3em.studyconnect.model.services.EmailVerificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,9 @@ public class UsuarioService {
     @Autowired
     private CredentialValidationService credentialValidationService;
 
+    @Autowired
+    private EmailVerificationService emailVerificationService;
+
     public List<Usuario> findAll() {
         return usuarioRepository.findAll();
     }
@@ -50,13 +54,17 @@ public class UsuarioService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail ja esta cadastrado.");
         }
 
-        usuario.setAtivo(true);
+        usuario.setAtivo(false); // ativado apenas após verificação de e-mail
 
+        Usuario salvo;
         try {
-            return usuarioRepository.save(usuario);
+            salvo = usuarioRepository.save(usuario);
         } catch (DataIntegrityViolationException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail ja esta cadastrado.");
         }
+
+        emailVerificationService.enviarCodigo(salvo.getEmail());
+        return salvo;
     }
 
     public Usuario findById(Long id) {
