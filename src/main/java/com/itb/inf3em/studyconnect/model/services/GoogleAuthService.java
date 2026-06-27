@@ -61,12 +61,18 @@ public class GoogleAuthService {
             usuarioRepository.save(usuario);
         }
 
+        if (!usuario.isAtivo()) {
+            // Bloqueia login se a conta estiver suspensa pelo admin
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Conta suspensa. Entre em contato com o suporte.");
+        }
+
         return new LoginResponseDTO(
                 usuario.getId(),
                 usuario.getNome(),
                 usuario.getTipoUsuario().name(),
                 usuario.getFotoUrl(),
-                usuario.getEmail()
+                usuario.getEmail(),
+                usuario.isAtivo()
         );
     }
 

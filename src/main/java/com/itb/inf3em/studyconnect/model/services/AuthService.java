@@ -3,6 +3,7 @@ package com.itb.inf3em.studyconnect.model.services;
 import com.itb.inf3em.studyconnect.model.dto.LoginRequestDTO;
 import com.itb.inf3em.studyconnect.model.dto.LoginResponseDTO;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
+import com.itb.inf3em.studyconnect.model.repository.EmailVerificationTokenRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +27,9 @@ public class AuthService {
     @Autowired
     private CredentialValidationService credentialValidationService;
 
+    @Autowired
+    private EmailVerificationTokenRepository tokenRepository;
+
     public LoginResponseDTO login(LoginRequestDTO request) {
         long t0 = System.currentTimeMillis();
 
@@ -44,7 +48,16 @@ public class AuthService {
         }
 
         if (!usuario.isAtivo()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "E-mail nao verificado. Verifique sua caixa de entrada.");
+            boolean jaVerificada = usuario.getGoogleId() != null
+                    || tokenRepository.findByEmail(usuario.getEmail())
+                        .map(t -> t.isVerified())
+                        .orElse(false);
+
+            if (!jaVerificada) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "E-mail nao verificado. Verifique sua caixa de entrada.");
+            }
+            // Conta suspensa — retorna normalmente com ativo=false
+            // o frontend redireciona para a página de suspensão
         }
 
         log.info("[AUTH] login total: {}ms", System.currentTimeMillis() - t0);
@@ -54,7 +67,8 @@ public class AuthService {
                 usuario.getNome(),
                 usuario.getTipoUsuario().name(),
                 usuario.getFotoUrl(),
-                usuario.getEmail()
+                usuario.getEmail(),
+                usuario.isAtivo()
         );
     }
 }
