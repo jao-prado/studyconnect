@@ -50,7 +50,10 @@ public class EmailService {
         try {
             javaMailSender.send(message);
         } catch (MailException ex) {
-            log.error("[EmailService] Falha SMTP — causa: {}", ex.getMostSpecificCause().getMessage(), ex);
+            Throwable cause = ex;
+            while (cause.getCause() != null) cause = cause.getCause();
+            log.error("[EmailService] Falha SMTP — tipo: {} — causa: {}", cause.getClass().getName(), cause.getMessage());
+            log.error("[EmailService] Stack completa:", ex);
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
                     "Nao foi possivel enviar o e-mail. Verifique a configuracao SMTP."
