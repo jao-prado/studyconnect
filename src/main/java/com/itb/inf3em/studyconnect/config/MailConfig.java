@@ -11,10 +11,10 @@ import java.util.Properties;
 @Configuration
 public class MailConfig {
 
-    @Value("${app.mail.host:}")
+    @Value("${app.mail.host:smtp.gmail.com}")
     private String host;
 
-    @Value("${app.mail.port:587}")
+    @Value("${app.mail.port:465}")
     private int port;
 
     @Value("${app.mail.username:}")
@@ -26,8 +26,11 @@ public class MailConfig {
     @Value("${app.mail.auth:true}")
     private boolean auth;
 
-    @Value("${app.mail.starttls:true}")
+    @Value("${app.mail.starttls:false}")
     private boolean starttls;
+
+    @Value("${app.mail.ssl:true}")
+    private boolean ssl;
 
     @Bean
     public JavaMailSender javaMailSender() {
@@ -37,13 +40,14 @@ public class MailConfig {
         mailSender.setUsername(username);
         mailSender.setPassword(password);
 
-        Properties properties = mailSender.getJavaMailProperties();
-        properties.put("mail.transport.protocol", "smtp");
-        properties.put("mail.smtp.auth", String.valueOf(auth));
-        properties.put("mail.smtp.starttls.enable", String.valueOf(starttls));
-        properties.put("mail.smtp.connectiontimeout", "5000");
-        properties.put("mail.smtp.timeout", "5000");
-        properties.put("mail.smtp.writetimeout", "5000");
+        Properties props = mailSender.getJavaMailProperties();
+        props.put("mail.transport.protocol", "smtp");
+        props.put("mail.smtp.auth", String.valueOf(auth));
+        props.put("mail.smtp.starttls.enable", String.valueOf(starttls));
+        props.put("mail.smtp.ssl.enable", String.valueOf(ssl));
+        props.put("mail.smtp.connectiontimeout", "10000");
+        props.put("mail.smtp.timeout", "10000");
+        props.put("mail.smtp.writetimeout", "10000");
 
         return mailSender;
     }
