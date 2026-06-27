@@ -3,6 +3,8 @@ package com.itb.inf3em.studyconnect.model.services;
 import com.itb.inf3em.studyconnect.model.dto.TicketDTO;
 import com.itb.inf3em.studyconnect.model.entity.Ticket;
 import com.itb.inf3em.studyconnect.model.repository.TicketRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,7 +17,9 @@ import java.util.Map;
 @Service
 public class TicketService {
 
+    private static final Logger log = LoggerFactory.getLogger(TicketService.class);
     @Autowired private TicketRepository ticketRepository;
+    @Autowired private EmailService emailService;
 
     public TicketDTO criar(Map<String, Object> body) {
         String mensagem = body.getOrDefault("mensagem", "").toString().trim();
@@ -60,7 +64,25 @@ public class TicketService {
         t.setResposta(resposta.trim());
         t.setStatus("RESPONDIDO");
         t.setRespondidaEm(LocalDateTime.now());
-        return new TicketDTO(ticketRepository.save(t));
+        TicketDTO dto = new TicketDTO(ticketRepository.save(t));
+
+        if (t.getEmail() != null && !t.getEmail().isBlank()) {
+            try {
+                String subject = "Resposta ao seu ticket #" + t.getId() + " — StudyConnect";
+                String body = "Olá" + (t.getNome() != null ? ", " + t.getNome() : "") + "!\n\n"
+                    + "Seu ticket foi respondido:\n\n"
+                    + "Assunto: " + t.getTipo() + "\n"
+                    + "Sua mensagem: " + t.getMensagem() + "\n\n"
+                    + "Resposta da equipe:\n" + resposta.trim() + "\n\n"
+                    + "Atenciosamente,\nEquipe StudyConnect";
+                emailService.sendSimpleEmail(t.getEmail(), subject, body);
+            } catch (Exception ex) {
+                // nao deixa falha de e-mail derrubar a resposta
+                log.warn("[TicketService] Falha ao enviar e-mail para {}: {}", t.getEmail(), ex.getMessage());
+            }
+        }
+
+        return dto;
     }
 
     public TicketDTO fechar(Long id) {
