@@ -1,6 +1,5 @@
 package com.itb.inf3em.studyconnect.model.entity;
 
-
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 
@@ -20,8 +19,14 @@ public class Usuario {
     @Column(length = 45, nullable = false, unique = true)
     private String email;
 
-    @Column(length = 255, nullable = false)
+    @Column(length = 255)
     private String senha;
+
+    @Column(length = 255)
+    private String googleId;
+
+    @Column(columnDefinition = "NVARCHAR(MAX)")
+    private String fotoUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
@@ -30,68 +35,34 @@ public class Usuario {
     @Column(nullable = false)
     private boolean ativo;
 
-
-    // FetchType.LAZY: certificados NAO sao carregados automaticamente junto com o Usuario.
-    // Sem isso, qualquer busca de usuario (inclusive login) dispararia um SELECT extra
-    // na tabela Certificado, mesmo quando nao precisamos deles.
     @OneToMany(mappedBy = "usuario", fetch = FetchType.LAZY)
     @JsonManagedReference
     private List<Certificado> certificados;
 
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public Long getId() {
-        return id;
-    }
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-    public String getNome() {
-        return nome;
-    }
+    public String getSenha() { return senha; }
+    public void setSenha(String senha) { this.senha = senha; }
 
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
+    public String getGoogleId() { return googleId; }
+    public void setGoogleId(String googleId) { this.googleId = googleId; }
 
-    public String getEmail() {
-        return email;
-    }
+    public String getFotoUrl() { return fotoUrl; }
+    public void setFotoUrl(String fotoUrl) { this.fotoUrl = fotoUrl; }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+    public TipoUsuario getTipoUsuario() { return tipoUsuario; }
+    public void setTipoUsuario(TipoUsuario tipoUsuario) { this.tipoUsuario = tipoUsuario; }
 
-    public String getSenha() {
-        return senha;
-    }
+    public boolean isAtivo() { return ativo; }
+    public void setAtivo(boolean ativo) { this.ativo = ativo; }
 
-    public void setSenha(String senha) {
-        this.senha = senha;
-    }
-
-    public TipoUsuario getTipoUsuario() {
-        return tipoUsuario;
-    }
-
-    public void setTipoUsuario(TipoUsuario tipoUsuario) {
-        this.tipoUsuario = tipoUsuario;
-    }
-
-    public boolean isAtivo() {
-        return ativo;
-    }
-
-    public void setAtivo(boolean ativo) {
-        this.ativo = ativo;
-    }
-
-    public List<Certificado> getCertificados() {
-        return certificados;
-    }
-
-    public void setCertificados(List<Certificado> certificados) {
-        this.certificados = certificados;
-    }
+    public List<Certificado> getCertificados() { return certificados; }
+    public void setCertificados(List<Certificado> certificados) { this.certificados = certificados; }
 }

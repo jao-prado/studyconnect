@@ -39,7 +39,7 @@ public class AuthService {
 
         log.info("[AUTH] query DB: {}ms", System.currentTimeMillis() - t0);
 
-        if (!passwordEncoder.matches(request.getSenha(), usuario.getSenha())) {
+        if (usuario.getSenha() == null || !passwordEncoder.matches(request.getSenha(), usuario.getSenha())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha incorretos");
         }
 
@@ -52,7 +52,9 @@ public class AuthService {
         return new LoginResponseDTO(
                 usuario.getId(),
                 usuario.getNome(),
-                usuario.getTipoUsuario().name()
+                usuario.getTipoUsuario().name(),
+                usuario.getFotoUrl(),
+                usuario.getEmail()
         );
     }
 }

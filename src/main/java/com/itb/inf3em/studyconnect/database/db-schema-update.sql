@@ -190,7 +190,45 @@ BEGIN
     PRINT 'OK: Usuario.senha expandida para NVARCHAR(255)';
 END
 
--- 2. Adicionar disciplina na Trilha
+-- 2. Adicionar google_id na Usuario
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.Usuario') AND name = 'google_id'
+)
+BEGIN
+    ALTER TABLE dbo.Usuario ADD google_id NVARCHAR(255) NULL;
+    PRINT 'OK: Usuario.google_id adicionada';
+END
+
+-- 3. Adicionar foto_url na Usuario
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.Usuario') AND name = 'foto_url'
+)
+BEGIN
+    ALTER TABLE dbo.Usuario ADD foto_url NVARCHAR(MAX) NULL;
+    PRINT 'OK: Usuario.foto_url adicionada';
+END
+ELSE IF EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.Usuario') AND name = 'foto_url' AND max_length <> -1
+)
+BEGIN
+    ALTER TABLE dbo.Usuario ALTER COLUMN foto_url NVARCHAR(MAX) NULL;
+    PRINT 'OK: Usuario.foto_url expandida para NVARCHAR(MAX)';
+END
+
+-- 4. Tornar senha nullable (usuarios Google nao tem senha local)
+IF EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.Usuario') AND name = 'senha' AND is_nullable = 0
+)
+BEGIN
+    ALTER TABLE dbo.Usuario ALTER COLUMN senha NVARCHAR(255) NULL;
+    PRINT 'OK: Usuario.senha agora aceita NULL';
+END
+
+-- 5. Adicionar disciplina na Trilha
 IF NOT EXISTS (
     SELECT 1 FROM sys.columns
     WHERE object_id = OBJECT_ID(N'dbo.Trilha') AND name = 'disciplina'

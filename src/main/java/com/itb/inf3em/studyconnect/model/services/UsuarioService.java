@@ -91,6 +91,10 @@ public class UsuarioService {
             usuarioExistente.setSenha(passwordEncoder.encode(usuario.getSenha()));
         }
 
+        if (usuario.getFotoUrl() != null) {
+            usuarioExistente.setFotoUrl(usuario.getFotoUrl());
+        }
+
         usuarioExistente.setTipoUsuario(usuario.getTipoUsuario());
         usuarioExistente.setAtivo(usuario.isAtivo());
         return usuarioRepository.save(usuarioExistente);
