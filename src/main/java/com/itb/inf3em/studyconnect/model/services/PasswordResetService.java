@@ -4,6 +4,8 @@ import com.itb.inf3em.studyconnect.model.entity.PasswordResetToken;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.PasswordResetTokenRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,8 @@ import java.util.UUID;
 @Service
 public class PasswordResetService {
 
+    private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
+
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private PasswordResetTokenRepository tokenRepository;
     @Autowired private EmailService emailService;
@@ -29,22 +33,28 @@ public class PasswordResetService {
 
     @Transactional
     public void solicitarRecuperacao(String email) {
-        // Sempre retorna 200 para não revelar se o e-mail existe
         usuarioRepository.findByEmail(email).ifPresent(usuario -> {
-            tokenRepository.deleteByEmail(email);
+            try {
+                tokenRepository.deleteByEmail(email);
 
-            String token = UUID.randomUUID().toString();
-            Instant expiracao = Instant.now().plus(30, ChronoUnit.MINUTES);
-            tokenRepository.save(new PasswordResetToken(token, email, expiracao));
+                String token = UUID.randomUUID().toString();
+                Instant expiracao = Instant.now().plus(30, ChronoUnit.MINUTES);
+                tokenRepository.save(new PasswordResetToken(token, email, expiracao));
 
-            String link = frontendUrl + "/redefinir-senha?token=" + token;
-            String corpo = "Olá, " + usuario.getNome() + "!\n\n"
-                    + "Recebemos uma solicitação para redefinir a senha da sua conta StudyConnect.\n\n"
-                    + "Clique no link abaixo para criar uma nova senha (válido por 30 minutos):\n"
-                    + link + "\n\n"
-                    + "Se você não fez essa solicitação, ignore este e-mail.";
+                String link = frontendUrl + "/redefinir-senha?token=" + token;
+                String corpo = "Olá, " + usuario.getNome() + "!\n\n"
+                        + "Recebemos uma solicitação para redefinir a senha da sua conta StudyConnect.\n\n"
+                        + "Clique no link abaixo para criar uma nova senha (válido por 30 minutos):\n"
+                        + link + "\n\n"
+                        + "Se você não fez essa solicitação, ignore este e-mail.";
 
-            emailService.sendSimpleEmail(email, "Redefinição de senha — StudyConnect", corpo);
+                emailService.sendSimpleEmail(email, "Redefinição de senha — StudyConnect", corpo);
+                log.info("[PasswordReset] E-mail de recuperacao enviado para: {}", email);
+            } catch (Exception ex) {
+                log.error("[PasswordReset] Falha ao enviar e-mail para {}: {}", email, ex.getMessage(), ex);
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                        "Nao foi possivel enviar o e-mail de recuperacao. Tente novamente.");
+            }
         });
     }
 

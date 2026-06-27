@@ -4,6 +4,8 @@ import com.itb.inf3em.studyconnect.model.entity.EmailVerificationToken;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.EmailVerificationTokenRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,8 @@ import java.util.Random;
 
 @Service
 public class EmailVerificationService {
+
+    private static final Logger log = LoggerFactory.getLogger(EmailVerificationService.class);
 
     @Autowired private EmailVerificationTokenRepository tokenRepository;
     @Autowired private UsuarioRepository usuarioRepository;
@@ -40,7 +44,14 @@ public class EmailVerificationService {
                 + "Válido por " + EXPIRY_MINUTES + " minutos.\n"
                 + "Se você não criou uma conta, ignore este e-mail.";
 
-        emailService.sendSimpleEmail(email, "Código de verificação — StudyConnect", corpo);
+        try {
+            emailService.sendSimpleEmail(email, "Código de verificação — StudyConnect", corpo);
+            log.info("[EmailVerification] Codigo enviado para: {}", email);
+        } catch (Exception ex) {
+            log.error("[EmailVerification] Falha ao enviar codigo para {}: {}", email, ex.getMessage(), ex);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Nao foi possivel enviar o e-mail de verificacao. Tente novamente.");
+        }
     }
 
     @Transactional
