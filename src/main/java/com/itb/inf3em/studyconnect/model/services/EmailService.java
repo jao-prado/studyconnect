@@ -4,12 +4,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 @Service
@@ -20,44 +21,51 @@ public class EmailService {
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
-    private static final String TEST_SUBJECT = "Teste de envio de e-mail";
-    private static final String TEST_BODY = "O envio de e-mail do StudyConnect funcionou.";
+    private final RestClient restClient = RestClient.create();
 
-    private final JavaMailSender javaMailSender;
-    private final String from;
+    @Value("${app.brevo.api-key:}")
+    private String apiKey;
 
-    public EmailService(JavaMailSender javaMailSender,
-                        @Value("${app.mail.from:}") String from) {
-        this.javaMailSender = javaMailSender;
-        this.from = from;
-    }
+    @Value("${app.mail.from-name:StudyConnect}")
+    private String fromName;
+
+    @Value("${app.mail.from-email:studyconnect2026@gmail.com}")
+    private String fromEmail;
 
     public void sendTestEmail(String to) {
-        sendSimpleEmail(to, TEST_SUBJECT, TEST_BODY);
+        sendSimpleEmail(to, "Teste de envio de e-mail", "O envio de e-mail do StudyConnect funcionou.");
     }
 
     public void sendSimpleEmail(String to, String subject, String body) {
         validateRecipient(to);
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        if (from != null && !from.isBlank()) {
-            message.setFrom(from);
+        if (apiKey == null || apiKey.isBlank()) {
+            log.error("[EmailService] APP_BREVO_API_KEY nao configurada.");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Servico de e-mail nao configurado.");
         }
-        message.setTo(to.trim());
-        message.setSubject(subject);
-        message.setText(body);
+
+        Map<String, Object> payload = Map.of(
+                "sender",  Map.of("name", fromName, "email", fromEmail),
+                "to",      List.of(Map.of("email", to.trim())),
+                "subject", subject,
+                "textContent", body
+        );
 
         try {
-            javaMailSender.send(message);
-        } catch (MailException ex) {
-            Throwable cause = ex;
-            while (cause.getCause() != null) cause = cause.getCause();
-            log.error("[EmailService] Falha SMTP — tipo: {} — causa: {}", cause.getClass().getName(), cause.getMessage());
-            log.error("[EmailService] Stack completa:", ex);
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Nao foi possivel enviar o e-mail. Verifique a configuracao SMTP."
-            );
+            restClient.post()
+                    .uri("https://api.brevo.com/v3/smtp/email")
+                    .header("api-key", apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(payload)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("[EmailService] E-mail enviado para: {}", to);
+        } catch (Exception ex) {
+            log.error("[EmailService] Falha ao enviar e-mail para {}: {}", to, ex.getMessage(), ex);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Nao foi possivel enviar o e-mail. Tente novamente.");
         }
     }
 
