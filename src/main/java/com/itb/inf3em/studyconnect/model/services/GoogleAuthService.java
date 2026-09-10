@@ -4,6 +4,7 @@ import com.itb.inf3em.studyconnect.model.dto.LoginResponseDTO;
 import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
+import com.itb.inf3em.studyconnect.security.JwtService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,13 +23,15 @@ public class GoogleAuthService {
     private static final String GOOGLE_TOKEN_INFO = "https://oauth2.googleapis.com/tokeninfo?id_token=";
 
     private final UsuarioRepository usuarioRepository;
+    private final JwtService jwtService;
     private final RestClient restClient = RestClient.create();
 
     @Value("${app.google.client-id:}")
     private String expectedClientId;
 
-    public GoogleAuthService(UsuarioRepository usuarioRepository) {
+    public GoogleAuthService(UsuarioRepository usuarioRepository, JwtService jwtService) {
         this.usuarioRepository = usuarioRepository;
+        this.jwtService = jwtService;
     }
 
     @Transactional
@@ -72,7 +75,9 @@ public class GoogleAuthService {
                 usuario.getTipoUsuario().name(),
                 usuario.getFotoUrl(),
                 usuario.getEmail(),
-                usuario.isAtivo()
+                usuario.isAtivo(),
+                jwtService.generateToken(usuario),
+                jwtService.getExpirationSeconds()
         );
     }
 

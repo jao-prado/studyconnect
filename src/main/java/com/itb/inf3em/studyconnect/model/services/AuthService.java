@@ -5,6 +5,7 @@ import com.itb.inf3em.studyconnect.model.dto.LoginResponseDTO;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.EmailVerificationTokenRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
+import com.itb.inf3em.studyconnect.security.JwtService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,9 @@ public class AuthService {
 
     @Autowired
     private EmailVerificationTokenRepository tokenRepository;
+
+    @Autowired
+    private JwtService jwtService;
 
     public LoginResponseDTO login(LoginRequestDTO request) {
         long t0 = System.currentTimeMillis();
@@ -56,6 +60,7 @@ public class AuthService {
             if (!jaVerificada) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "E-mail nao verificado. Verifique sua caixa de entrada.");
             }
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Conta suspensa. Entre em contato com o suporte.");
             // Conta suspensa — retorna normalmente com ativo=false
             // o frontend redireciona para a página de suspensão
         }
@@ -68,7 +73,9 @@ public class AuthService {
                 usuario.getTipoUsuario().name(),
                 usuario.getFotoUrl(),
                 usuario.getEmail(),
-                usuario.isAtivo()
+                usuario.isAtivo(),
+                jwtService.generateToken(usuario),
+                jwtService.getExpirationSeconds()
         );
     }
 }
