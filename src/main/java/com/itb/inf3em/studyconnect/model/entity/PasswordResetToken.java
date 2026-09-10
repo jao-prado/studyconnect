@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "PasswordResetToken")
+@Table(name = "password_reset_token")
 public class PasswordResetToken {
 
     @Id

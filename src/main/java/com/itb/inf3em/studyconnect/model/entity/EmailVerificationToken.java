@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "EmailVerificationToken")
+@Table(name = "email_verification_token")
 public class EmailVerificationToken {
 
     @Id

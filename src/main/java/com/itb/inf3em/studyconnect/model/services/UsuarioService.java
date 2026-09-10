@@ -8,7 +8,6 @@ import com.itb.inf3em.studyconnect.model.services.EmailVerificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,9 +25,6 @@ public class UsuarioService {
 
     @Autowired
     private TrilhaRepository trilhaRepository;
-
-    @Autowired
-    private JdbcTemplate jdbc;
 
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
@@ -126,8 +122,6 @@ public class UsuarioService {
     @Transactional
     public void delete(long id) {
         findById(id);
-
-        jdbc.update("DELETE FROM Curso WHERE professor_id = ?", id);
 
         List<Trilha> trilhas = trilhaRepository.findByProfessorId(id);
         if (!trilhas.isEmpty()) {

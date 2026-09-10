@@ -312,7 +312,7 @@ END
 -- 8. MatriculaTrilha — adicionar se tabela já existia sem a constraint UNIQUE
 IF NOT EXISTS (
     SELECT 1 FROM sys.indexes
-    WHERE name = 'UQ_Matricula_Aluno_Trilha' AND object_id = OBJECT_ID(N'dbo.MatriculaTrilha')
+    WHERE name = 'UQ_Matricula_Aluno_Trilhza' AND object_id = OBJECT_ID(N'dbo.MatriculaTrilha')
 )
 BEGIN
     ALTER TABLE dbo.MatriculaTrilha

@@ -1,9 +1,6 @@
 package com.itb.inf3em.studyconnect.model.entity;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-
-import java.util.List;
 
 @Entity
 @Table(name = "Usuario")
@@ -35,10 +32,6 @@ public class Usuario {
     @Column(nullable = false)
     private boolean ativo;
 
-    @OneToMany(mappedBy = "usuario", fetch = FetchType.LAZY)
-    @JsonManagedReference
-    private List<Certificado> certificados;
-
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -63,6 +56,4 @@ public class Usuario {
     public boolean isAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
 
-    public List<Certificado> getCertificados() { return certificados; }
-    public void setCertificados(List<Certificado> certificados) { this.certificados = certificados; }
 }
