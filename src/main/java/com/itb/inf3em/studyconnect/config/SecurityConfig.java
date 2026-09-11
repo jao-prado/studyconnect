@@ -1,6 +1,9 @@
 package com.itb.inf3em.studyconnect.config;
 
 import com.itb.inf3em.studyconnect.security.JwtAuthenticationFilter;
+import com.itb.inf3em.studyconnect.security.RateLimitAuthFilter;
+import com.itb.inf3em.studyconnect.security.RateLimitPublicFilter;
+import com.itb.inf3em.studyconnect.security.RateLimiter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,7 +21,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+                                                   JwtAuthenticationFilter jwtAuthenticationFilter,
+                                                   RateLimiter rateLimiter) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
@@ -38,8 +42,6 @@ public class SecurityConfig {
                                 "/api/v1/auth/resend-verification",
                                 "/api/v1/auth/forgot-password",
                                 "/api/v1/auth/reset-password",
-                                "/api/v1/auth/email-change/request",
-                                "/api/v1/auth/email-change/verify",
                                 "/api/v1/usuarios").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/email-change/confirm").permitAll()
                         .requestMatchers("/api/v1/admin/**", "/api/email/**").hasRole("ADMIN")
@@ -49,7 +51,10 @@ public class SecurityConfig {
                                 "/api/v1/tickets/*/responder",
                                 "/api/v1/tickets/*/fechar").hasRole("ADMIN")
                         .anyRequest().authenticated())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                // Pipeline: RateLimitPublicFilter → JwtAuthenticationFilter → RateLimitAuthFilter
+                .addFilterBefore(new RateLimitPublicFilter(rateLimiter), JwtAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(new RateLimitAuthFilter(rateLimiter), JwtAuthenticationFilter.class);
 
         return http.build();
     }

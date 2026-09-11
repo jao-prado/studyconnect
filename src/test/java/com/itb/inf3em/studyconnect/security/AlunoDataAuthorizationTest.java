@@ -60,7 +60,8 @@ class AlunoDataAuthorizationTest {
         TrilhaAuthorization trilhaAuthorization = new TrilhaAuthorization(currentUser);
         matriculaService = new MatriculaTrilhaService(matriculaRepository, usuarioRepository, trilhaRepository,
                 aulaRepository, progressoRepository, mock(DuvidaRepository.class), alunoAuthorization, trilhaAuthorization);
-        progressoService = new ProgressoAulaService(progressoRepository, aulaRepository, trilhaRepository, alunoAuthorization);
+        progressoService = new ProgressoAulaService(progressoRepository, aulaRepository, trilhaRepository,
+                matriculaRepository, alunoAuthorization);
         perfilService = new PerfilAprendizadoService(perfilRepository, alunoAuthorization);
     }
 
@@ -97,6 +98,7 @@ class AlunoDataAuthorizationTest {
         aula.setTrilhaId(100L);
         when(aulaRepository.findById(200L)).thenReturn(Optional.of(aula));
         when(trilhaRepository.findById(100L)).thenReturn(Optional.of(trilha(100L)));
+        when(matriculaRepository.existsByAlunoIdAndTrilhaIdAndAtivoTrue(10L, 100L)).thenReturn(true);
         when(progressoRepository.findByAlunoIdAndAulaId(10L, 200L)).thenReturn(Optional.empty());
         when(progressoRepository.save(any(ProgressoAula.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

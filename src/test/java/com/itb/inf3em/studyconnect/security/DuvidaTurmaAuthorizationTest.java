@@ -64,6 +64,8 @@ class DuvidaTurmaAuthorizationTest {
         SecurityContextHolder.clearContext();
     }
 
+    // ── cenário 1: aluno A cria dúvida → permitido ───────────────────────────
+
     @Test
     void alunoACriaDuvidaPropriaMesmoComAlunoETrilhaManipulados() {
         authenticate(10L, TipoUsuario.ALUNO);
@@ -80,15 +82,40 @@ class DuvidaTurmaAuthorizationTest {
         assertEquals(100L, criada.getTrilhaId());
     }
 
-    @Test
-    void alunoANaoPodeResponderOuResolverDuvidaDeB() {
-        authenticate(10L, TipoUsuario.ALUNO);
-        Duvida duvidaDeB = duvida(500L, 20L, 200L, 100L);
-        when(duvidaRepository.findById(500L)).thenReturn(Optional.of(duvidaDeB));
+    // ── cenário 2: aluno A consulta sua dúvida → permitido ───────────────────
 
-        assertThrows(AccessDeniedException.class, () -> duvidaService.responder(500L, "Resposta"));
-        assertThrows(AccessDeniedException.class, () -> duvidaService.resolver(500L));
+    @Test
+    void alunoAConsultaPropriasDuvidas_permitido() {
+        authenticate(10L, TipoUsuario.ALUNO);
+        when(duvidaRepository.findByAlunoIdOrderByCriadaEmDesc(10L))
+                .thenReturn(List.of(duvida(500L, 10L, 200L, 100L)));
+
+        assertDoesNotThrow(() -> duvidaService.listarPorAluno(10L));
     }
+
+    // ── cenário 3: aluno A tenta responder a PRÓPRIA dúvida → 403 ────────────
+
+    @Test
+    void alunoANaoPodeResponderAPropriaDuvida() {
+        authenticate(10L, TipoUsuario.ALUNO);
+        Duvida propria = duvida(501L, 10L, 200L, 100L); // alunoId == caller
+        when(duvidaRepository.findById(501L)).thenReturn(Optional.of(propria));
+
+        assertThrows(AccessDeniedException.class, () -> duvidaService.responder(501L, "Resposta"));
+    }
+
+    // ── cenário 4: aluno A tenta resolver a PRÓPRIA dúvida → 403 ─────────────
+
+    @Test
+    void alunoANaoPodeResolverAPropriaDuvida() {
+        authenticate(10L, TipoUsuario.ALUNO);
+        Duvida propria = duvida(501L, 10L, 200L, 100L);
+        when(duvidaRepository.findById(501L)).thenReturn(Optional.of(propria));
+
+        assertThrows(AccessDeniedException.class, () -> duvidaService.resolver(501L));
+    }
+
+    // ── cenário 5: professor A responde dúvida da sua trilha → permitido ─────
 
     @Test
     void professorARespondeDuvidaDaPropriaTrilha() {
@@ -105,6 +132,8 @@ class DuvidaTurmaAuthorizationTest {
         assertEquals("RESPONDIDA", duvida.getStatus());
     }
 
+    // ── cenário 6: professor B tenta responder dúvida da trilha de A → 403 ───
+
     @Test
     void professorBNaoPodeResponderDuvidaDaTrilhaDeA() {
         authenticate(40L, TipoUsuario.PROFESSOR);
@@ -115,8 +144,26 @@ class DuvidaTurmaAuthorizationTest {
         assertThrows(AccessDeniedException.class, () -> duvidaService.responder(500L, "Resposta indevida"));
     }
 
+    // ── cenário 7: professor A resolve dúvida da sua trilha → permitido ──────
+
     @Test
-    void adminPodeAdministrarQualquerDuvida() {
+    void professorAResolveDuvidaDaPropriaTrilha() {
+        authenticate(30L, TipoUsuario.PROFESSOR);
+        Duvida duvida = duvida(502L, 10L, 200L, 100L);
+        when(duvidaRepository.findById(502L)).thenReturn(Optional.of(duvida));
+        when(aulaRepository.findById(200L)).thenReturn(Optional.of(aula(200L, 100L)));
+        when(trilhaRepository.findById(100L)).thenReturn(Optional.of(trilha(100L, 30L)));
+        when(duvidaRepository.save(any(Duvida.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario(10L, "Aluno A")));
+
+        assertDoesNotThrow(() -> duvidaService.resolver(502L));
+        assertEquals("RESPONDIDA", duvida.getStatus());
+    }
+
+    // ── cenário 8: ADMIN responde qualquer dúvida → permitido ────────────────
+
+    @Test
+    void adminPodeResponderQualquerDuvida() {
         authenticate(99L, TipoUsuario.ADMIN);
         Duvida duvida = duvida(500L, 10L, 200L, 100L);
         when(duvidaRepository.findById(500L)).thenReturn(Optional.of(duvida));
@@ -126,6 +173,34 @@ class DuvidaTurmaAuthorizationTest {
 
         assertDoesNotThrow(() -> duvidaService.responder(500L, "Resposta administrativa"));
     }
+
+    // ── cenário 9: ADMIN resolve qualquer dúvida → permitido ─────────────────
+
+    @Test
+    void adminResolveQualquerDuvida() {
+        authenticate(99L, TipoUsuario.ADMIN);
+        Duvida duvida = duvida(503L, 10L, 200L, 100L);
+        when(duvidaRepository.findById(503L)).thenReturn(Optional.of(duvida));
+        when(duvidaRepository.save(any(Duvida.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario(10L, "Aluno A")));
+        when(aulaRepository.findById(200L)).thenReturn(Optional.of(aula(200L, 100L)));
+
+        assertDoesNotThrow(() -> duvidaService.resolver(503L));
+        assertEquals("RESPONDIDA", duvida.getStatus());
+    }
+
+    // ── cenário 10: sem JWT em resposta → 401 (AccessDeniedException) ─────────
+
+    @Test
+    void semJwtResponder_bloqueado() {
+        Duvida duvida = duvida(504L, 10L, 200L, 100L);
+        when(duvidaRepository.findById(504L)).thenReturn(Optional.of(duvida));
+
+        assertThrows(AccessDeniedException.class, () -> duvidaService.responder(504L, "Resposta"));
+        assertThrows(AccessDeniedException.class, () -> duvidaService.resolver(504L));
+    }
+
+    // ── testes de turma preservados ───────────────────────────────────────────
 
     @Test
     void professorACriaEditaEExcluiTurmaPropria() {
@@ -183,6 +258,8 @@ class DuvidaTurmaAuthorizationTest {
                 "aulaId", 200L, "mensagem", "Ajuda")));
         assertThrows(AccessDeniedException.class, () -> turmaService.createTurma(turma(30L, "COD-A")));
     }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
 
     private void authenticate(Long usuarioId, TipoUsuario tipoUsuario) {
         AuthenticatedUser user = new AuthenticatedUser(usuarioId, "usuario@example.com", tipoUsuario);

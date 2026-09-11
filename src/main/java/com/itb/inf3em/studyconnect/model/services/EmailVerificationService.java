@@ -12,9 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Random;
 
 @Service
 public class EmailVerificationService {
@@ -26,10 +26,11 @@ public class EmailVerificationService {
     @Autowired private EmailService emailService;
 
     private static final int EXPIRY_MINUTES = 15;
+    private static final SecureRandom OTP_RANDOM = new SecureRandom();
 
     @Transactional
     public void enviarCodigo(String email) {
-        String code = String.format("%06d", new Random().nextInt(1_000_000));
+        String code = String.format("%06d", OTP_RANDOM.nextInt(1_000_000));
         Instant expiracao = Instant.now().plus(EXPIRY_MINUTES, ChronoUnit.MINUTES);
 
         tokenRepository.findByEmail(email).ifPresentOrElse(token -> {

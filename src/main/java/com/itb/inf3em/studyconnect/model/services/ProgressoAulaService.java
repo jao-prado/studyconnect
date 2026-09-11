@@ -3,6 +3,7 @@ package com.itb.inf3em.studyconnect.model.services;
 import com.itb.inf3em.studyconnect.model.dto.ProgressoDTO;
 import com.itb.inf3em.studyconnect.model.entity.ProgressoAula;
 import com.itb.inf3em.studyconnect.model.repository.AulaRepository;
+import com.itb.inf3em.studyconnect.model.repository.MatriculaTrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.ProgressoAulaRepository;
 import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
 import com.itb.inf3em.studyconnect.security.AlunoAuthorization;
@@ -19,15 +20,18 @@ public class ProgressoAulaService {
     private final ProgressoAulaRepository progressoRepository;
     private final AulaRepository aulaRepository;
     private final TrilhaRepository trilhaRepository;
+    private final MatriculaTrilhaRepository matriculaRepository;
     private final AlunoAuthorization alunoAuthorization;
 
     public ProgressoAulaService(ProgressoAulaRepository progressoRepository,
                                 AulaRepository aulaRepository,
                                 TrilhaRepository trilhaRepository,
+                                MatriculaTrilhaRepository matriculaRepository,
                                 AlunoAuthorization alunoAuthorization) {
         this.progressoRepository = progressoRepository;
         this.aulaRepository = aulaRepository;
         this.trilhaRepository = trilhaRepository;
+        this.matriculaRepository = matriculaRepository;
         this.alunoAuthorization = alunoAuthorization;
     }
 
@@ -42,6 +46,12 @@ public class ProgressoAulaService {
 
         trilhaRepository.findById(aula.getTrilhaId()).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, "Trilha nao encontrada."));
+
+        // Verifica matrícula ativa na trilha antes de registrar progresso
+        if (!matriculaRepository.existsByAlunoIdAndTrilhaIdAndAtivoTrue(authenticatedAlunoId, aula.getTrilhaId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Matricula ativa na trilha e obrigatoria para registrar progresso.");
+        }
 
         ProgressoAula progresso = progressoRepository
             .findByAlunoIdAndAulaId(authenticatedAlunoId, aulaId)

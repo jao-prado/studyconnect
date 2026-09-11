@@ -22,16 +22,25 @@ public class TicketController {
     private CurrentUser currentUser;
 
     /** POST /api/v1/tickets
-     *  Body: { usuarioId?, nome?, email, tipo, mensagem } */
+     *  Body: { tipo, mensagem } — usuarioId/nome/email do body são ignorados */
     @PostMapping
     public ResponseEntity<TicketDTO> criar(@RequestBody Map<String, Object> body) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ticketService.criar(body));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ticketService.criar(body, currentUser.require()));
     }
 
     /** GET /api/v1/tickets — lista todos (admin) */
     @GetMapping
     public ResponseEntity<List<TicketDTO>> listar() {
         return ResponseEntity.ok(ticketService.listarTodos());
+    }
+
+    /** GET /api/v1/tickets/{id} — dono ou admin */
+    @GetMapping("/{id}")
+    public ResponseEntity<TicketDTO> porId(@PathVariable Long id) {
+        TicketDTO dto = ticketService.buscarPorId(id);
+        currentUser.requireSameUserOrAdmin(dto.getUsuarioId());
+        return ResponseEntity.ok(dto);
     }
 
     /** GET /api/v1/tickets/usuario/{usuarioId} */

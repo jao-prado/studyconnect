@@ -62,22 +62,22 @@ public class DuvidaAuthorization {
         alunoAuthorization.requireCanAccessAluno(alunoId);
     }
 
-    public void requireCanAccess(Duvida duvida) {
+    /**
+     * Exige que o caller possa RESPONDER ou RESOLVER uma duvida.
+     * ALUNO nunca pode — mesmo sendo o dono da duvida.
+     * PROFESSOR pode somente se for dono da trilha relacionada.
+     * ADMIN pode sempre.
+     */
+    public void requireCanRespond(Duvida duvida) {
         AuthenticatedUser user = currentUser.require();
         if (user.tipoUsuario() == TipoUsuario.ADMIN) {
-            return;
-        }
-        if (user.tipoUsuario() == TipoUsuario.ALUNO) {
-            if (!user.usuarioId().equals(duvida.getAlunoId())) {
-                throw new AccessDeniedException("Voce nao tem permissao para esta duvida.");
-            }
             return;
         }
         if (user.tipoUsuario() == TipoUsuario.PROFESSOR) {
             requireCanManageAula(duvida.getAulaId());
             return;
         }
-        throw new AccessDeniedException("Acesso negado.");
+        throw new AccessDeniedException("Apenas professores ou administradores podem responder duvidas.");
     }
 
     public void requireCanAccessAlunoAula(Long alunoId, Long aulaId) {

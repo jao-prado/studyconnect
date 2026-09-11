@@ -67,7 +67,7 @@ public class DuvidaService {
     public DuvidaDTO responder(Long id, String resposta) {
         Duvida d = duvidaRepository.findById(id).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, "Dúvida não encontrada."));
-        duvidaAuthorization.requireCanAccess(d);
+        duvidaAuthorization.requireCanRespond(d);
         if (resposta == null || resposta.trim().isEmpty())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Resposta obrigatória.");
         d.setResposta(resposta.trim());
@@ -79,7 +79,7 @@ public class DuvidaService {
     public DuvidaDTO resolver(Long id) {
         Duvida d = duvidaRepository.findById(id).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, "Dúvida não encontrada."));
-        duvidaAuthorization.requireCanAccess(d);
+        duvidaAuthorization.requireCanRespond(d);
         d.setStatus("RESPONDIDA");
         if (d.getRespondidaEm() == null) d.setRespondidaEm(LocalDateTime.now());
         return toDTO(duvidaRepository.save(d));

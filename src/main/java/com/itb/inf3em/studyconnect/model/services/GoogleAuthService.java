@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -21,17 +22,23 @@ public class GoogleAuthService {
 
     private static final Logger log = LoggerFactory.getLogger(GoogleAuthService.class);
     private static final String GOOGLE_TOKEN_INFO = "https://oauth2.googleapis.com/tokeninfo?id_token=";
+    static final List<String> VALID_ISSUERS = List.of("accounts.google.com", "https://accounts.google.com");
 
     private final UsuarioRepository usuarioRepository;
     private final JwtService jwtService;
-    private final RestClient restClient = RestClient.create();
+    private final RestClient restClient;
 
     @Value("${app.google.client-id:}")
     private String expectedClientId;
 
     public GoogleAuthService(UsuarioRepository usuarioRepository, JwtService jwtService) {
+        this(usuarioRepository, jwtService, RestClient.create());
+    }
+
+    public GoogleAuthService(UsuarioRepository usuarioRepository, JwtService jwtService, RestClient restClient) {
         this.usuarioRepository = usuarioRepository;
         this.jwtService = jwtService;
+        this.restClient = restClient;
     }
 
     @Transactional
@@ -82,7 +89,12 @@ public class GoogleAuthService {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> verificarToken(String idToken) {
+    public Map<String, Object> verificarToken(String idToken) {
+        if (expectedClientId == null || expectedClientId.isBlank()) {
+            log.error("[GoogleAuth] APP_GOOGLE_CLIENT_ID nao configurado.");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token Google invalido.");
+        }
+
         try {
             Map<String, Object> payload = restClient.get()
                     .uri(GOOGLE_TOKEN_INFO + idToken)
@@ -93,13 +105,26 @@ public class GoogleAuthService {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token Google invalido.");
             }
 
-            // Valida que o token foi emitido para o nosso client_id
-            if (!expectedClientId.isBlank()) {
-                String aud = (String) payload.get("aud");
-                if (!expectedClientId.equals(aud)) {
-                    log.warn("[GoogleAuth] client_id invalido: {}", aud);
-                    throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token Google invalido.");
-                }
+            // Valida audience
+            String aud = (String) payload.get("aud");
+            if (!expectedClientId.equals(aud)) {
+                log.warn("[GoogleAuth] aud invalido.");
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token Google invalido.");
+            }
+
+            // Valida issuer
+            String iss = (String) payload.get("iss");
+            if (iss == null || !VALID_ISSUERS.contains(iss)) {
+                log.warn("[GoogleAuth] iss invalido.");
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token Google invalido.");
+            }
+
+            // Valida email_verified
+            Object emailVerified = payload.get("email_verified");
+            boolean verified = "true".equals(emailVerified) || Boolean.TRUE.equals(emailVerified);
+            if (!verified) {
+                log.warn("[GoogleAuth] email_verified ausente ou false.");
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token Google invalido.");
             }
 
             return payload;
