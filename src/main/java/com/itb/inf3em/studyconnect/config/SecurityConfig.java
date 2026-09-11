@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -52,9 +53,18 @@ public class SecurityConfig {
                                 "/api/v1/tickets/*/fechar").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 // Pipeline: RateLimitPublicFilter → JwtAuthenticationFilter → RateLimitAuthFilter
-                .addFilterBefore(new RateLimitPublicFilter(rateLimiter), JwtAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(new RateLimitAuthFilter(rateLimiter), JwtAuthenticationFilter.class);
+                //
+                // Âncoras usadas (filtros padrão com ordem registrada no Spring Security):
+                //   BasicAuthenticationFilter  — posição anterior ao UsernamePasswordAuthenticationFilter
+                //   UsernamePasswordAuthenticationFilter — posição de referência central
+                //
+                // Resultado final na cadeia:
+                //   … → RateLimitPublicFilter → JwtAuthenticationFilter
+                //       → UsernamePasswordAuthenticationFilter (nunca executa, STATELESS)
+                //       → RateLimitAuthFilter → …
+                .addFilterBefore(new RateLimitPublicFilter(rateLimiter), BasicAuthenticationFilter.class)
+                .addFilterAfter(jwtAuthenticationFilter, BasicAuthenticationFilter.class)
+                .addFilterAfter(new RateLimitAuthFilter(rateLimiter), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

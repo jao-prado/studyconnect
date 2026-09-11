@@ -17,4 +17,6 @@ public interface ProgressoAulaRepository extends JpaRepository<ProgressoAula, Lo
     List<ProgressoAula> findByAlunoIdAndAulaIdInAndConcluidaTrue(Long alunoId, List<Long> aulaIds);
 
     long countByAlunoIdAndAulaIdInAndConcluidaTrue(Long alunoId, List<Long> aulaIds);
+
+    void deleteByAlunoId(Long alunoId);
 }

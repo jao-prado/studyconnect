@@ -19,14 +19,14 @@ public class Usuario {
     @Column(length = 255)
     private String senha;
 
-    @Column(length = 255)
+    @Column(name = "google_id", length = 255)
     private String googleId;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "foto_url", columnDefinition = "NVARCHAR(MAX)")
     private String fotoUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20, nullable = false)
+    @Column(name = "tipo_usuario", length = 20, nullable = false)
     private TipoUsuario tipoUsuario;
 
     @Column(nullable = false)

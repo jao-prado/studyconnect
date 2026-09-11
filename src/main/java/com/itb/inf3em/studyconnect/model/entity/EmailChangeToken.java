@@ -11,28 +11,28 @@ public class EmailChangeToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "usuario_id", nullable = false)
     private Long usuarioId;
 
-    @Column(nullable = false)
+    @Column(name = "email_atual", nullable = false)
     private String emailAtual;
 
-    @Column(nullable = false)
+    @Column(name = "email_novo", nullable = false)
     private String emailNovo;
 
     /** UUID enviado no link de confirmação para o e-mail atual (etapa 1) */
-    @Column(nullable = false, unique = true)
+    @Column(name = "confirm_token", nullable = false, unique = true)
     private String confirmToken;
 
     /** OTP de 6 dígitos enviado para o novo e-mail (etapa 2) */
-    @Column(length = 6)
+    @Column(name = "otp_code", length = 6)
     private String otpCode;
 
     /** STEP1 = aguardando confirmação no e-mail atual | STEP2 = aguardando OTP no novo e-mail */
     @Column(nullable = false, length = 10)
     private String etapa;
 
-    @Column(nullable = false)
+    @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
     public EmailChangeToken() {}

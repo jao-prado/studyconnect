@@ -17,7 +17,7 @@ public class PasswordResetToken {
     @Column(nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
     private boolean used;

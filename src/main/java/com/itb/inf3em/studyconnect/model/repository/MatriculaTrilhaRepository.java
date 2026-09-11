@@ -23,6 +23,8 @@ public interface MatriculaTrilhaRepository extends JpaRepository<MatriculaTrilha
 
     long countByAtivoTrue();
 
+    void deleteByAlunoId(Long alunoId);
+
     /** Returns [trilhaId, count] pairs for all trilhas with active matriculas */
     @Query("SELECT m.trilhaId, COUNT(m) FROM MatriculaTrilha m WHERE m.ativo = true GROUP BY m.trilhaId")
     List<Object[]> countAlunosPorTrilha();

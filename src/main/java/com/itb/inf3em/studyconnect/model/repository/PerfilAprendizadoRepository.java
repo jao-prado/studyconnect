@@ -9,4 +9,6 @@ import java.util.Optional;
 @Repository
 public interface PerfilAprendizadoRepository extends JpaRepository<PerfilAprendizado, Long> {
     Optional<PerfilAprendizado> findByAlunoId(Long alunoId);
+
+    void deleteByAlunoId(Long alunoId);
 }

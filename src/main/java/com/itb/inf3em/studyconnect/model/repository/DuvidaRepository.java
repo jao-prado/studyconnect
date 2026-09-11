@@ -18,4 +18,8 @@ public interface DuvidaRepository extends JpaRepository<Duvida, Long> {
     List<Duvida> findByAlunoIdOrderByCriadaEmDesc(Long alunoId);
 
     long countByTrilhaIdAndStatus(Long trilhaId, String status);
+
+    void deleteByAlunoId(Long alunoId);
+
+    void deleteByTrilhaId(Long trilhaId);
 }
