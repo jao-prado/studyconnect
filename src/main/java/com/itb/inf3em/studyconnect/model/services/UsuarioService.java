@@ -1,6 +1,7 @@
 package com.itb.inf3em.studyconnect.model.services;
 
 import com.itb.inf3em.studyconnect.model.entity.Trilha;
+import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
@@ -45,6 +46,7 @@ public class UsuarioService {
 
         usuario.setEmail(usuario.getEmail().trim().toLowerCase());
         usuario.setSenha(passwordEncoder.encode(usuario.getSenha()));
+        usuario.setTipoUsuario(TipoUsuario.ALUNO);
 
         if (usuarioRepository.existsByEmail(usuario.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail ja esta cadastrado.");
@@ -68,7 +70,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new RuntimeException("Usuario nao encontrado com o id" + id));
     }
 
-    public Usuario update(long id, Usuario usuario) {
+    public Usuario updateOwn(long id, Usuario usuario) {
         Usuario usuarioExistente = findById(id);
 
         credentialValidationService.validateEmail(usuario.getEmail());
@@ -91,8 +93,12 @@ public class UsuarioService {
             usuarioExistente.setFotoUrl(usuario.getFotoUrl());
         }
 
-        usuarioExistente.setTipoUsuario(usuario.getTipoUsuario());
-        usuarioExistente.setAtivo(usuario.isAtivo());
+        return usuarioRepository.save(usuarioExistente);
+    }
+
+    public Usuario updateStatusAsAdmin(long id, boolean ativo) {
+        Usuario usuarioExistente = findById(id);
+        usuarioExistente.setAtivo(ativo);
         return usuarioRepository.save(usuarioExistente);
     }
 

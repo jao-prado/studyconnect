@@ -4,7 +4,8 @@ import com.itb.inf3em.studyconnect.model.entity.Turma;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.TurmaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.itb.inf3em.studyconnect.security.AuthenticatedUser;
+import com.itb.inf3em.studyconnect.security.TurmaAuthorization;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,11 +16,17 @@ import java.util.List;
 @Service
 public class TurmaService {
 
-    @Autowired
-    private TurmaRepository turmaRepository;
+    private final TurmaRepository turmaRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final TurmaAuthorization turmaAuthorization;
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    public TurmaService(TurmaRepository turmaRepository,
+                        UsuarioRepository usuarioRepository,
+                        TurmaAuthorization turmaAuthorization) {
+        this.turmaRepository = turmaRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.turmaAuthorization = turmaAuthorization;
+    }
 
     /**
      * Get all turmas (public + all types).
@@ -48,13 +55,28 @@ public class TurmaService {
         return turmaRepository.findByProfessorId(professorId);
     }
 
+    public List<Turma> getMyTurmas(Long requestedProfessorId) {
+        AuthenticatedUser user = turmaAuthorization.requireProfessorOrAdmin();
+        Long professorId = user.tipoUsuario() == com.itb.inf3em.studyconnect.model.entity.TipoUsuario.ADMIN
+                && requestedProfessorId != null ? requestedProfessorId : user.usuarioId();
+        return turmaRepository.findByProfessorId(professorId);
+    }
+
     /**
      * Create a new turma.
      * Validates that the codigo is unique and professorId exists.
      */
     public Turma createTurma(Turma turma) {
+        AuthenticatedUser authenticatedUser = turmaAuthorization.requireProfessorOrAdmin();
+        Long professorId = authenticatedUser.usuarioId();
+        if (authenticatedUser.tipoUsuario() == com.itb.inf3em.studyconnect.model.entity.TipoUsuario.ADMIN
+                && turma.getProfessorId() != null) {
+            professorId = turma.getProfessorId();
+        }
+        turma.setProfessorId(professorId);
+
         // Validate professor exists
-        Usuario professor = usuarioRepository.findById(turma.getProfessorId())
+        Usuario professor = usuarioRepository.findById(professorId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Professor não encontrado com o id: " + turma.getProfessorId()
@@ -95,6 +117,8 @@ public class TurmaService {
             turma.setProfessorNome(professor.getNome());
         }
 
+        turma.setProfessorNome(professor.getNome());
+
         try {
             return turmaRepository.save(turma);
         } catch (DataIntegrityViolationException ex) {
@@ -129,9 +153,10 @@ public class TurmaService {
      */
     public Turma updateTurma(Long id, Turma turmaUpdate, Long currentUserId) {
         Turma turmaExistente = getTurmaById(id);
+        turmaAuthorization.requireCanManage(turmaExistente);
 
         // Verify that current user is the professor
-        if (!turmaExistente.getProfessorId().equals(currentUserId)) {
+        if (false) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "Você não tem permissão para editar esta turma."
@@ -164,9 +189,10 @@ public class TurmaService {
      */
     public void deleteTurma(Long id, Long currentUserId) {
         Turma turma = getTurmaById(id);
+        turmaAuthorization.requireCanManage(turma);
 
         // Verify that current user is the professor
-        if (!turma.getProfessorId().equals(currentUserId)) {
+        if (false) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
                     "Você não tem permissão para deletar esta turma."

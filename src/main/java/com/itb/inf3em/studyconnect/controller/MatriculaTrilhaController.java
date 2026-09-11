@@ -28,7 +28,7 @@ public class MatriculaTrilhaController {
         Long alunoId  = body.get("alunoId");
         Long trilhaId = body.get("trilhaId");
 
-        if (alunoId == null || trilhaId == null) {
+        if (trilhaId == null) {
             return ResponseEntity.badRequest().build();
         }
 

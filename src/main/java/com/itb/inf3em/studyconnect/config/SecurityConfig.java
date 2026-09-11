@@ -42,6 +42,12 @@ public class SecurityConfig {
                                 "/api/v1/auth/email-change/verify",
                                 "/api/v1/usuarios").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/email-change/confirm").permitAll()
+                        .requestMatchers("/api/v1/admin/**", "/api/email/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/usuarios").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/tickets").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/tickets/*/responder",
+                                "/api/v1/tickets/*/fechar").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

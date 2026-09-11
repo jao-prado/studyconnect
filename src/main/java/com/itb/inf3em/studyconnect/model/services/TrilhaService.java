@@ -4,7 +4,8 @@ import com.itb.inf3em.studyconnect.model.entity.Trilha;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.itb.inf3em.studyconnect.security.AuthenticatedUser;
+import com.itb.inf3em.studyconnect.security.TrilhaAuthorization;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,11 +16,17 @@ import java.util.List;
 @Service
 public class TrilhaService {
 
-    @Autowired
-    private TrilhaRepository trilhaRepository;
+    private final TrilhaRepository trilhaRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final TrilhaAuthorization trilhaAuthorization;
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    public TrilhaService(TrilhaRepository trilhaRepository,
+                         UsuarioRepository usuarioRepository,
+                         TrilhaAuthorization trilhaAuthorization) {
+        this.trilhaRepository = trilhaRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.trilhaAuthorization = trilhaAuthorization;
+    }
 
     /**
      * Get all trilhas (public + all types).
@@ -53,8 +60,11 @@ public class TrilhaService {
      * Validates that the professorId exists.
      */
     public Trilha createTrilha(Trilha trilha) {
+        AuthenticatedUser authenticatedUser = trilhaAuthorization.requireProfessorOrAdmin();
+        trilha.setProfessorId(authenticatedUser.usuarioId());
+
         // Validate professor exists
-        Usuario professor = usuarioRepository.findById(trilha.getProfessorId())
+        Usuario professor = usuarioRepository.findById(authenticatedUser.usuarioId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Professor não encontrado com o id: " + trilha.getProfessorId()
@@ -89,10 +99,7 @@ public class TrilhaService {
             );
         }
 
-        // Set professor nome if not provided
-        if (trilha.getProfessorNome() == null || trilha.getProfessorNome().isEmpty()) {
-            trilha.setProfessorNome(professor.getNome());
-        }
+        trilha.setProfessorNome(professor.getNome());
 
         try {
             return trilhaRepository.save(trilha);
@@ -115,6 +122,7 @@ public class TrilhaService {
      */
     public Trilha updateTrilha(Long id, Trilha trilhaUpdate) {
         Trilha trilhaExistente = getTrilhaById(id);
+        trilhaAuthorization.requireCanManage(trilhaExistente);
 
         if (trilhaUpdate.getNome() != null && !trilhaUpdate.getNome().trim().isEmpty())
             trilhaExistente.setNome(trilhaUpdate.getNome());
@@ -135,6 +143,8 @@ public class TrilhaService {
      * Only the professor who created it can delete.
      */
     public void deleteTrilha(Long id) {
-        trilhaRepository.delete(getTrilhaById(id));
+        Trilha trilha = getTrilhaById(id);
+        trilhaAuthorization.requireCanManage(trilha);
+        trilhaRepository.delete(trilha);
     }
 }

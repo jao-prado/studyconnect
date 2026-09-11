@@ -37,8 +37,8 @@ public class TurmaController {
      * Query param: professorId (required for now)
      */
     @GetMapping("/minhas")
-    public ResponseEntity<List<TurmaDTO>> getMyTurmas(@RequestParam Long professorId) {
-        List<Turma> turmas = turmaService.getTurmasByProfessor(professorId);
+    public ResponseEntity<List<TurmaDTO>> getMyTurmas(@RequestParam(required = false) Long professorId) {
+        List<Turma> turmas = turmaService.getMyTurmas(professorId);
         List<TurmaDTO> dtos = turmas.stream()
                 .map(TurmaDTO::new)
                 .toList();
@@ -118,7 +118,7 @@ public class TurmaController {
     public ResponseEntity<TurmaDTO> updateTurma(
             @PathVariable Long id,
             @RequestBody Turma turmaUpdate,
-            @RequestParam Long professorId) {
+            @RequestParam(required = false) Long professorId) {
 
         Turma atualizada = turmaService.updateTurma(id, turmaUpdate, professorId);
         return ResponseEntity.ok(new TurmaDTO(atualizada));
@@ -132,7 +132,7 @@ public class TurmaController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteTurma(
             @PathVariable Long id,
-            @RequestParam Long professorId) {
+            @RequestParam(required = false) Long professorId) {
 
         turmaService.deleteTurma(id, professorId);
         return ResponseEntity.ok("Turma deletada com sucesso.");

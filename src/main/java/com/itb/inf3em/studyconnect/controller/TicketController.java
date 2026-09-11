@@ -2,6 +2,7 @@ package com.itb.inf3em.studyconnect.controller;
 
 import com.itb.inf3em.studyconnect.model.dto.TicketDTO;
 import com.itb.inf3em.studyconnect.model.services.TicketService;
+import com.itb.inf3em.studyconnect.security.CurrentUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,9 @@ public class TicketController {
 
     @Autowired
     private TicketService ticketService;
+
+    @Autowired
+    private CurrentUser currentUser;
 
     /** POST /api/v1/tickets
      *  Body: { usuarioId?, nome?, email, tipo, mensagem } */
@@ -33,6 +37,7 @@ public class TicketController {
     /** GET /api/v1/tickets/usuario/{usuarioId} */
     @GetMapping("/usuario/{usuarioId}")
     public ResponseEntity<List<TicketDTO>> porUsuario(@PathVariable Long usuarioId) {
+        currentUser.requireSameUserOrAdmin(usuarioId);
         return ResponseEntity.ok(ticketService.listarPorUsuario(usuarioId));
     }
 

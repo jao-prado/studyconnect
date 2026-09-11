@@ -4,7 +4,7 @@ import com.itb.inf3em.studyconnect.model.entity.Aula;
 import com.itb.inf3em.studyconnect.model.entity.Trilha;
 import com.itb.inf3em.studyconnect.model.repository.AulaRepository;
 import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.itb.inf3em.studyconnect.security.TrilhaAuthorization;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,11 +14,17 @@ import java.util.List;
 @Service
 public class AulaService {
 
-    @Autowired
-    private AulaRepository aulaRepository;
+    private final AulaRepository aulaRepository;
+    private final TrilhaRepository trilhaRepository;
+    private final TrilhaAuthorization trilhaAuthorization;
 
-    @Autowired
-    private TrilhaRepository trilhaRepository;
+    public AulaService(AulaRepository aulaRepository,
+                       TrilhaRepository trilhaRepository,
+                       TrilhaAuthorization trilhaAuthorization) {
+        this.aulaRepository = aulaRepository;
+        this.trilhaRepository = trilhaRepository;
+        this.trilhaAuthorization = trilhaAuthorization;
+    }
 
     /**
      * Get all aulas for a specific trilha.
@@ -66,6 +72,7 @@ public class AulaService {
 
         // blocos chegam no campo conteudo como JSON string — ja vem serializado do frontend
         // se conteudo vier nulo, inicializa com objeto vazio
+        requireManageTrilha(aula.getTrilhaId());
         if (aula.getConteudo() == null) {
             aula.setConteudo("{}");
         }
@@ -88,6 +95,7 @@ public class AulaService {
      */
     public Aula updateAula(Long id, Aula aulaUpdate) {
         Aula aulaExistente = getAulaById(id);
+        requireManageTrilha(aulaExistente.getTrilhaId());
 
         // Update allowed fields
         if (aulaUpdate.getTitulo() != null && !aulaUpdate.getTitulo().trim().isEmpty()) {
@@ -118,6 +126,14 @@ public class AulaService {
      */
     public void deleteAula(Long id) {
         Aula aula = getAulaById(id);
+        requireManageTrilha(aula.getTrilhaId());
         aulaRepository.delete(aula);
+    }
+
+    private void requireManageTrilha(Long trilhaId) {
+        Trilha trilha = trilhaRepository.findById(trilhaId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Trilha nao encontrada."));
+        trilhaAuthorization.requireCanManage(trilha);
     }
 }

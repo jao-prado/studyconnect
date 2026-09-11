@@ -4,7 +4,8 @@ import com.itb.inf3em.studyconnect.model.dto.ProgressoDTO;
 import com.itb.inf3em.studyconnect.model.entity.ProgressoAula;
 import com.itb.inf3em.studyconnect.model.repository.AulaRepository;
 import com.itb.inf3em.studyconnect.model.repository.ProgressoAulaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
+import com.itb.inf3em.studyconnect.security.AlunoAuthorization;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -15,23 +16,36 @@ import java.util.List;
 @Service
 public class ProgressoAulaService {
 
-    @Autowired
-    private ProgressoAulaRepository progressoRepository;
+    private final ProgressoAulaRepository progressoRepository;
+    private final AulaRepository aulaRepository;
+    private final TrilhaRepository trilhaRepository;
+    private final AlunoAuthorization alunoAuthorization;
 
-    @Autowired
-    private AulaRepository aulaRepository;
+    public ProgressoAulaService(ProgressoAulaRepository progressoRepository,
+                                AulaRepository aulaRepository,
+                                TrilhaRepository trilhaRepository,
+                                AlunoAuthorization alunoAuthorization) {
+        this.progressoRepository = progressoRepository;
+        this.aulaRepository = aulaRepository;
+        this.trilhaRepository = trilhaRepository;
+        this.alunoAuthorization = alunoAuthorization;
+    }
 
     /** Upsert: marca aula como concluída. Idempotente. */
     public ProgressoAula concluirAula(Long alunoId, Long aulaId) {
-        if (alunoId == null || aulaId == null)
+        Long authenticatedAlunoId = alunoAuthorization.resolveAlunoId(alunoId);
+        if (aulaId == null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "alunoId e aulaId são obrigatórios.");
 
-        aulaRepository.findById(aulaId).orElseThrow(() ->
+        var aula = aulaRepository.findById(aulaId).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
 
+        trilhaRepository.findById(aula.getTrilhaId()).orElseThrow(() ->
+            new ResponseStatusException(HttpStatus.NOT_FOUND, "Trilha nao encontrada."));
+
         ProgressoAula progresso = progressoRepository
-            .findByAlunoIdAndAulaId(alunoId, aulaId)
-            .orElseGet(() -> new ProgressoAula(alunoId, aulaId));
+            .findByAlunoIdAndAulaId(authenticatedAlunoId, aulaId)
+            .orElseGet(() -> new ProgressoAula(authenticatedAlunoId, aulaId));
 
         if (!progresso.isConcluida()) {
             progresso.setConcluida(true);
@@ -44,6 +58,7 @@ public class ProgressoAulaService {
 
     /** Retorna IDs das aulas concluídas (usado internamente e pelo hook de progresso). */
     public List<Long> getAulasConcluidas(Long alunoId) {
+        alunoAuthorization.requireCanAccessAluno(alunoId);
         return progressoRepository
             .findByAlunoIdAndConcluidaTrue(alunoId)
             .stream()
@@ -53,11 +68,15 @@ public class ProgressoAulaService {
 
     /** Retorna objetos completos com aulaId + concluidaEm (usado pelo gráfico semanal). */
     public List<ProgressoAula> getProgressoCompleto(Long alunoId) {
+        alunoAuthorization.requireCanAccessAluno(alunoId);
         return progressoRepository.findByAlunoIdAndConcluidaTrue(alunoId);
     }
 
     /** Retorna progresso do aluno em uma trilha específica. */
     public ProgressoDTO getProgressoTrilha(Long trilhaId, Long alunoId) {
+        alunoAuthorization.requireCanAccessAluno(alunoId);
+        trilhaRepository.findById(trilhaId).orElseThrow(() ->
+            new ResponseStatusException(HttpStatus.NOT_FOUND, "Trilha nao encontrada."));
         List<Long> aulaIds = aulaRepository
             .findByTrilhaIdOrderByOrdem(trilhaId)
             .stream()
