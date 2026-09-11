@@ -6,6 +6,8 @@ import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
 import com.itb.inf3em.studyconnect.security.AuthenticatedUser;
 import com.itb.inf3em.studyconnect.security.TrilhaAuthorization;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,8 @@ import java.util.List;
 
 @Service
 public class TrilhaService {
+
+    private static final Logger log = LoggerFactory.getLogger(TrilhaService.class);
 
     private final TrilhaRepository trilhaRepository;
     private final UsuarioRepository usuarioRepository;
@@ -104,14 +108,16 @@ public class TrilhaService {
         try {
             return trilhaRepository.save(trilha);
         } catch (DataIntegrityViolationException ex) {
+            log.error("Erro de integridade ao salvar trilha", ex);
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Erro ao salvar trilha no banco de dados: " + ex.getMostSpecificCause().getMessage()
+                    "Não foi possível salvar a trilha devido a dados inválidos ou conflitantes."
             );
         } catch (Exception ex) {
+            log.error("Erro inesperado ao criar trilha", ex);
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Erro inesperado ao criar trilha: " + ex.getMessage()
+                    "Não foi possível salvar a trilha devido a dados inválidos ou conflitantes."
             );
         }
     }

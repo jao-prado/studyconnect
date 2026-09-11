@@ -6,6 +6,8 @@ import com.itb.inf3em.studyconnect.model.repository.TurmaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
 import com.itb.inf3em.studyconnect.security.AuthenticatedUser;
 import com.itb.inf3em.studyconnect.security.TurmaAuthorization;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,8 @@ import java.util.List;
 
 @Service
 public class TurmaService {
+
+    private static final Logger log = LoggerFactory.getLogger(TurmaService.class);
 
     private final TurmaRepository turmaRepository;
     private final UsuarioRepository usuarioRepository;
@@ -29,29 +33,33 @@ public class TurmaService {
     }
 
     /**
-     * Get all turmas (public + all types).
-     * Can be filtered in the future if needed.
+     * GET /api/v1/turmas
+     * Filtra turmas PRIVADAS para usuários sem permissão de leitura.
+     * ADMIN vê todas. PROFESSOR vê as próprias + públicas. ALUNO vê apenas públicas.
      */
     public List<Turma> getAllTurmas() {
-        return turmaRepository.findAll();
+        return turmaRepository.findAll().stream()
+                .filter(turmaAuthorization::canRead)
+                .toList();
     }
 
     /**
-     * Get a turma by its ID.
-     * Throws exception if not found.
+     * GET /api/v1/turmas/{id}
+     * Carrega a turma e aplica autorização baseada no dono e visibilidade.
      */
     public Turma getTurmaById(Long id) {
-        return turmaRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Turma não encontrada com o id: " + id
-                ));
+        Turma turma = turmaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
+        turmaAuthorization.requireCanReadTurma(turma);
+        return turma;
     }
 
     /**
-     * Get all turmas created by a specific teacher.
+     * GET /api/v1/turmas/professor/{professorId}
+     * ADMIN: qualquer professorId. PROFESSOR: somente o próprio. ALUNO: negado.
      */
     public List<Turma> getTurmasByProfessor(Long professorId) {
+        turmaAuthorization.requireCanReadByProfessor(professorId);
         return turmaRepository.findByProfessorId(professorId);
     }
 
@@ -62,10 +70,6 @@ public class TurmaService {
         return turmaRepository.findByProfessorId(professorId);
     }
 
-    /**
-     * Create a new turma.
-     * Validates that the codigo is unique and professorId exists.
-     */
     public Turma createTurma(Turma turma) {
         AuthenticatedUser authenticatedUser = turmaAuthorization.requireProfessorOrAdmin();
         Long professorId = authenticatedUser.usuarioId();
@@ -75,46 +79,26 @@ public class TurmaService {
         }
         turma.setProfessorId(professorId);
 
-        // Validate professor exists
         Usuario professor = usuarioRepository.findById(professorId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Professor não encontrado com o id: " + turma.getProfessorId()
                 ));
 
-        // Validate codigo is unique
         if (turmaRepository.existsByCodigo(turma.getCodigo())) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Este código de turma já está em uso."
-            );
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este código de turma já está em uso.");
         }
 
-        // Validate required fields
         if (turma.getNome() == null || turma.getNome().trim().isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Nome da turma é obrigatório."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nome da turma é obrigatório.");
         }
 
         if (turma.getCodigo() == null || turma.getCodigo().trim().isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Código da turma é obrigatório."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Código da turma é obrigatório.");
         }
 
         if (turma.getProfessorId() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "ID do professor é obrigatório."
-            );
-        }
-
-        // Set professor nome if not provided
-        if (turma.getProfessorNome() == null || turma.getProfessorNome().isEmpty()) {
-            turma.setProfessorNome(professor.getNome());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID do professor é obrigatório.");
         }
 
         turma.setProfessorNome(professor.getNome());
@@ -122,23 +106,20 @@ public class TurmaService {
         try {
             return turmaRepository.save(turma);
         } catch (DataIntegrityViolationException ex) {
+            log.error("Erro de integridade ao salvar turma", ex);
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Erro ao salvar turma no banco de dados: " + ex.getMostSpecificCause().getMessage()
+                    "Não foi possível salvar a turma devido a dados inválidos ou conflitantes."
             );
         } catch (Exception ex) {
+            log.error("Erro inesperado ao criar turma", ex);
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Erro inesperado ao criar turma: " + ex.getMessage()
+                    "Não foi possível salvar a turma devido a dados inválidos ou conflitantes."
             );
         }
     }
 
-    /**
-     * Join a turma using codigo.
-     * Frontend will handle the actual enrollment (future feature).
-     * For now, just validates the codigo exists.
-     */
     public Turma joinTurmaByCode(String codigo) {
         return turmaRepository.findByCodigo(codigo)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -147,35 +128,24 @@ public class TurmaService {
                 ));
     }
 
-    /**
-     * Update a turma's information.
-     * Only the professor who created it can update.
-     */
     public Turma updateTurma(Long id, Turma turmaUpdate, Long currentUserId) {
-        Turma turmaExistente = getTurmaById(id);
+        Turma turmaExistente = turmaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
         turmaAuthorization.requireCanManage(turmaExistente);
 
-        // Verify that current user is the professor
         if (false) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Você não tem permissão para editar esta turma."
-            );
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para editar esta turma.");
         }
 
-        // Update allowed fields
         if (turmaUpdate.getNome() != null && !turmaUpdate.getNome().trim().isEmpty()) {
             turmaExistente.setNome(turmaUpdate.getNome());
         }
-
         if (turmaUpdate.getDescricao() != null) {
             turmaExistente.setDescricao(turmaUpdate.getDescricao());
         }
-
         if (turmaUpdate.getTipo() != null) {
             turmaExistente.setTipo(turmaUpdate.getTipo());
         }
-
         if (turmaUpdate.getNivel() != null) {
             turmaExistente.setNivel(turmaUpdate.getNivel());
         }
@@ -183,20 +153,13 @@ public class TurmaService {
         return turmaRepository.save(turmaExistente);
     }
 
-    /**
-     * Delete a turma.
-     * Only the professor who created it can delete.
-     */
     public void deleteTurma(Long id, Long currentUserId) {
-        Turma turma = getTurmaById(id);
+        Turma turma = turmaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
         turmaAuthorization.requireCanManage(turma);
 
-        // Verify that current user is the professor
         if (false) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Você não tem permissão para deletar esta turma."
-            );
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não tem permissão para deletar esta turma.");
         }
 
         turmaRepository.delete(turma);

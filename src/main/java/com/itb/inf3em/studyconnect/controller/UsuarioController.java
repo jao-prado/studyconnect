@@ -1,5 +1,6 @@
 package com.itb.inf3em.studyconnect.controller;
 
+import com.itb.inf3em.studyconnect.model.dto.AtualizarPerfilDTO;
 import com.itb.inf3em.studyconnect.model.dto.UsuarioDTO;
 import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
@@ -45,14 +46,20 @@ public class UsuarioController {
                 .body(new UsuarioDTO(novoUsuario));
     }
 
+    /**
+     * PUT /api/v1/usuarios/{id}
+     * Aceita apenas AtualizarPerfilDTO (nome, fotoUrl).
+     * email, senha, tipoUsuario e ativo são imutáveis por este endpoint.
+     * ADMIN atualizando outra conta usa updateStatusAsAdmin (ativo).
+     */
     @PutMapping("/{id}")
     public ResponseEntity<UsuarioDTO> atualizar(@PathVariable Long id,
-                                                 @RequestBody Usuario usuario) {
+                                                @RequestBody AtualizarPerfilDTO dto) {
         AuthenticatedUser authenticatedUser = currentUser.requireSameUserOrAdmin(id);
         Usuario atualizado = authenticatedUser.tipoUsuario() == TipoUsuario.ADMIN
                 && !authenticatedUser.usuarioId().equals(id)
-                ? usuarioService.updateStatusAsAdmin(id, usuario.isAtivo())
-                : usuarioService.updateOwn(id, usuario);
+                ? usuarioService.updateStatusAsAdmin(id, true)
+                : usuarioService.updateOwn(id, dto);
         return ResponseEntity.ok(new UsuarioDTO(atualizado));
     }
 

@@ -1,5 +1,6 @@
 package com.itb.inf3em.studyconnect.model.services;
 
+import com.itb.inf3em.studyconnect.model.dto.AtualizarPerfilDTO;
 import com.itb.inf3em.studyconnect.model.entity.Trilha;
 import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
@@ -70,27 +71,16 @@ public class UsuarioService {
                 .orElseThrow(() -> new RuntimeException("Usuario nao encontrado com o id" + id));
     }
 
-    public Usuario updateOwn(long id, Usuario usuario) {
+    public Usuario updateOwn(long id, AtualizarPerfilDTO dto) {
         Usuario usuarioExistente = findById(id);
 
-        credentialValidationService.validateEmail(usuario.getEmail());
-        String normalizedEmail = usuario.getEmail().trim().toLowerCase();
-
-        if (!usuarioExistente.getEmail().equalsIgnoreCase(normalizedEmail)
-                && usuarioRepository.existsByEmail(normalizedEmail)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail ja esta cadastrado.");
+        // Apenas nome e fotoUrl são editáveis pelo próprio usuário.
+        // email, senha, tipoUsuario e ativo são imutáveis por este fluxo.
+        if (dto.getNome() != null && !dto.getNome().isBlank()) {
+            usuarioExistente.setNome(dto.getNome().trim());
         }
-
-        usuarioExistente.setNome(usuario.getNome());
-        usuarioExistente.setEmail(normalizedEmail);
-
-        if (usuario.getSenha() != null && !usuario.getSenha().isBlank()) {
-            credentialValidationService.validatePassword(usuario.getSenha());
-            usuarioExistente.setSenha(passwordEncoder.encode(usuario.getSenha()));
-        }
-
-        if (usuario.getFotoUrl() != null) {
-            usuarioExistente.setFotoUrl(usuario.getFotoUrl());
+        if (dto.getFotoUrl() != null) {
+            usuarioExistente.setFotoUrl(dto.getFotoUrl());
         }
 
         return usuarioRepository.save(usuarioExistente);
