@@ -7,6 +7,7 @@ import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
 import com.itb.inf3em.studyconnect.security.JwtService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class GoogleAuthService {
     @Value("${app.google.client-id:}")
     private String expectedClientId;
 
+    @Autowired
     public GoogleAuthService(UsuarioRepository usuarioRepository, JwtService jwtService) {
         this(usuarioRepository, jwtService, RestClient.create());
     }
