@@ -32,6 +32,9 @@ public class Usuario {
     @Column(nullable = false)
     private boolean ativo;
 
+    @Column(name = "mfa_habilitado", nullable = false)
+    private boolean mfaHabilitado;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -55,5 +58,8 @@ public class Usuario {
 
     public boolean isAtivo() { return ativo; }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
+
+    public boolean isMfaHabilitado() { return mfaHabilitado; }
+    public void setMfaHabilitado(boolean mfaHabilitado) { this.mfaHabilitado = mfaHabilitado; }
 
 }

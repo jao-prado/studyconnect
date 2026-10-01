@@ -43,6 +43,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/resend-verification",
                                 "/api/v1/auth/forgot-password",
                                 "/api/v1/auth/reset-password",
+                                "/api/v1/auth/mfa/verify",
                                 "/api/v1/usuarios").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/email-change/confirm").permitAll()
                         .requestMatchers("/api/v1/admin/**", "/api/email/**").hasRole("ADMIN")
@@ -51,6 +52,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/tickets/*/responder",
                                 "/api/v1/tickets/*/fechar").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/solicitacoes-professor/minhas").authenticated()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/solicitacoes-professor",
+                                "/api/v1/solicitacoes-professor/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT,
+                                "/api/v1/solicitacoes-professor/*/aprovar",
+                                "/api/v1/solicitacoes-professor/*/reprovar").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 // Pipeline: RateLimitPublicFilter → JwtAuthenticationFilter → RateLimitAuthFilter
                 //

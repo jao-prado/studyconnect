@@ -28,19 +28,22 @@ public class GoogleAuthService {
     private final UsuarioRepository usuarioRepository;
     private final JwtService jwtService;
     private final RestClient restClient;
+    private final MfaService mfaService;
 
     @Value("${app.google.client-id:}")
     private String expectedClientId;
 
     @Autowired
-    public GoogleAuthService(UsuarioRepository usuarioRepository, JwtService jwtService) {
-        this(usuarioRepository, jwtService, RestClient.create());
+    public GoogleAuthService(UsuarioRepository usuarioRepository, JwtService jwtService, MfaService mfaService) {
+        this(usuarioRepository, jwtService, RestClient.create(), mfaService);
     }
 
-    public GoogleAuthService(UsuarioRepository usuarioRepository, JwtService jwtService, RestClient restClient) {
+    public GoogleAuthService(UsuarioRepository usuarioRepository, JwtService jwtService,
+                             RestClient restClient, MfaService mfaService) {
         this.usuarioRepository = usuarioRepository;
-        this.jwtService = jwtService;
-        this.restClient = restClient;
+        this.jwtService        = jwtService;
+        this.restClient        = restClient;
+        this.mfaService        = mfaService;
     }
 
     @Transactional
@@ -74,8 +77,12 @@ public class GoogleAuthService {
         }
 
         if (!usuario.isAtivo()) {
-            // Bloqueia login se a conta estiver suspensa pelo admin
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Conta suspensa. Entre em contato com o suporte.");
+        }
+
+        // ADMIN via Google tambem exige MFA obrigatoriamente
+        if (usuario.getTipoUsuario() == TipoUsuario.ADMIN) {
+            return mfaService.iniciarDesafio(usuario);
         }
 
         return new LoginResponseDTO(
@@ -86,7 +93,8 @@ public class GoogleAuthService {
                 usuario.getEmail(),
                 usuario.isAtivo(),
                 jwtService.generateToken(usuario),
-                jwtService.getExpirationSeconds()
+                jwtService.getExpirationSeconds(),
+                usuario.isMfaHabilitado()
         );
     }
 
@@ -107,21 +115,18 @@ public class GoogleAuthService {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token Google invalido.");
             }
 
-            // Valida audience
             String aud = (String) payload.get("aud");
             if (!expectedClientId.equals(aud)) {
                 log.warn("[GoogleAuth] aud invalido.");
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token Google invalido.");
             }
 
-            // Valida issuer
             String iss = (String) payload.get("iss");
             if (iss == null || !VALID_ISSUERS.contains(iss)) {
                 log.warn("[GoogleAuth] iss invalido.");
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token Google invalido.");
             }
 
-            // Valida email_verified
             Object emailVerified = payload.get("email_verified");
             boolean verified = "true".equals(emailVerified) || Boolean.TRUE.equals(emailVerified);
             if (!verified) {
@@ -146,7 +151,6 @@ public class GoogleAuthService {
         u.setFotoUrl(fotoUrl);
         u.setTipoUsuario(TipoUsuario.ALUNO);
         u.setAtivo(true);
-        // senha nula — usuario Google nao tem senha local
         return usuarioRepository.save(u);
     }
 }

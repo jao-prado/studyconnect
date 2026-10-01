@@ -70,6 +70,7 @@ public class RateLimitPublicFilter extends OncePerRequestFilter {
             case "/api/v1/auth/reset-password"      -> 10;
             case "/api/v1/auth/verify-email"        -> 10;
             case "/api/v1/auth/resend-verification" -> 3;
+            case "/api/v1/auth/mfa/verify"          -> 10;
             default                                 -> null;
         };
     }

@@ -2,6 +2,7 @@ package com.itb.inf3em.studyconnect.model.services;
 
 import com.itb.inf3em.studyconnect.model.dto.LoginRequestDTO;
 import com.itb.inf3em.studyconnect.model.dto.LoginResponseDTO;
+import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.EmailVerificationTokenRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
@@ -33,6 +34,9 @@ public class AuthService {
 
     @Autowired
     private JwtService jwtService;
+
+    @Autowired
+    private MfaService mfaService;
 
     public LoginResponseDTO login(LoginRequestDTO request) {
         long t0 = System.currentTimeMillis();
@@ -67,6 +71,14 @@ public class AuthService {
 
         log.info("[AUTH] login total: {}ms", System.currentTimeMillis() - t0);
 
+        // MFA obrigatório para ADMIN; opcional para demais se habilitado
+        boolean mfaObrigatorio = usuario.getTipoUsuario() == TipoUsuario.ADMIN;
+        boolean mfaAtivo       = usuario.isMfaHabilitado();
+
+        if (mfaObrigatorio || mfaAtivo) {
+            return mfaService.iniciarDesafio(usuario);
+        }
+
         return new LoginResponseDTO(
                 usuario.getId(),
                 usuario.getNome(),
@@ -75,7 +87,8 @@ public class AuthService {
                 usuario.getEmail(),
                 usuario.isAtivo(),
                 jwtService.generateToken(usuario),
-                jwtService.getExpirationSeconds()
+                jwtService.getExpirationSeconds(),
+                usuario.isMfaHabilitado()
         );
     }
 }

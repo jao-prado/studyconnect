@@ -1,6 +1,7 @@
 package com.itb.inf3em.studyconnect.controller;
 
 import com.itb.inf3em.studyconnect.model.dto.AtualizarPerfilDTO;
+import com.itb.inf3em.studyconnect.model.dto.DeleteAccountRequestDTO;
 import com.itb.inf3em.studyconnect.model.dto.UsuarioDTO;
 import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
@@ -13,16 +14,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/usuarios")
 public class UsuarioController {
 
-    @Autowired
-    private UsuarioService usuarioService;
-
-    @Autowired
-    private CurrentUser currentUser;
+    @Autowired private UsuarioService usuarioService;
+    @Autowired private CurrentUser    currentUser;
 
     @GetMapping
     public ResponseEntity<List<UsuarioDTO>> findAll() {
@@ -42,16 +41,9 @@ public class UsuarioController {
     @PostMapping
     public ResponseEntity<UsuarioDTO> cadastrar(@RequestBody Usuario usuario) {
         Usuario novoUsuario = usuarioService.save(usuario);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new UsuarioDTO(novoUsuario));
+        return ResponseEntity.status(HttpStatus.CREATED).body(new UsuarioDTO(novoUsuario));
     }
 
-    /**
-     * PUT /api/v1/usuarios/{id}
-     * Aceita apenas AtualizarPerfilDTO (nome, fotoUrl).
-     * email, senha, tipoUsuario e ativo são imutáveis por este endpoint.
-     * ADMIN atualizando outra conta usa updateStatusAsAdmin (ativo).
-     */
     @PutMapping("/{id}")
     public ResponseEntity<UsuarioDTO> atualizar(@PathVariable Long id,
                                                 @RequestBody AtualizarPerfilDTO dto) {
@@ -63,10 +55,34 @@ public class UsuarioController {
         return ResponseEntity.ok(new UsuarioDTO(atualizado));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<String> deletar(@PathVariable Long id) {
+    /**
+     * POST /api/v1/usuarios/{id}/delete-challenge
+     * Valida a senha e envia o código MFA de exclusão por e-mail.
+     * Só deve ser chamado quando mfaHabilitado=true.
+     */
+    @PostMapping("/{id}/delete-challenge")
+    public ResponseEntity<Map<String, String>> requestDeleteChallenge(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
         currentUser.requireSameUserOrAdmin(id);
-        usuarioService.delete(id);
+        String senha = body.get("senha");
+        if (senha == null || senha.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Senha obrigatória."));
+        }
+        usuarioService.requestDeleteChallenge(id, senha);
+        return ResponseEntity.ok(Map.of("message", "Código enviado para o seu e-mail."));
+    }
+
+    /**
+     * DELETE /api/v1/usuarios/{id}
+     * Exclui a conta após validar senha (+ código MFA se habilitado).
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deletar(@PathVariable Long id,
+                                          @RequestBody DeleteAccountRequestDTO dto) {
+        currentUser.requireSameUserOrAdmin(id);
+        usuarioService.deleteWithAuth(id, dto);
         return ResponseEntity.ok("Usuário excluído com sucesso!");
     }
 }
