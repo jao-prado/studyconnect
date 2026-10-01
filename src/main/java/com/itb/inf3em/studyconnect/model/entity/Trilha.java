@@ -23,6 +23,10 @@ public class Trilha {
     @Column(length = 20)
     private String tipo;  // PUBLICA or PRIVADA
 
+    /** Código de acesso para trilhas PRIVADAS. Gerado pelo backend. Nulo para trilhas públicas. */
+    @Column(name = "codigo_acesso", length = 16)
+    private String codigoAcesso;
+
     @Column(length = 50)
     private String nivel;
 
@@ -101,6 +105,9 @@ public class Trilha {
     public void setTipo(String tipo) {
         this.tipo = tipo;
     }
+
+    public String getCodigoAcesso()                    { return codigoAcesso; }
+    public void   setCodigoAcesso(String codigoAcesso) { this.codigoAcesso = codigoAcesso; }
 
     public String getNivel() {
         return nivel;

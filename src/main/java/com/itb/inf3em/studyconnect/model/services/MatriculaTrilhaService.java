@@ -2,6 +2,7 @@ package com.itb.inf3em.studyconnect.model.services;
 
 import com.itb.inf3em.studyconnect.model.dto.MatriculaAlunoDTO;
 import com.itb.inf3em.studyconnect.model.entity.MatriculaTrilha;
+import com.itb.inf3em.studyconnect.model.entity.Trilha;
 import com.itb.inf3em.studyconnect.model.repository.AulaRepository;
 import com.itb.inf3em.studyconnect.model.repository.DuvidaRepository;
 import com.itb.inf3em.studyconnect.model.repository.MatriculaTrilhaRepository;
@@ -55,8 +56,18 @@ public class MatriculaTrilhaService {
         // Valida existência
         usuarioRepository.findById(authenticatedAlunoId).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, "Aluno não encontrado."));
-        trilhaRepository.findById(trilhaId).orElseThrow(() ->
+        Trilha trilha = trilhaRepository.findById(trilhaId).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, "Trilha não encontrada."));
+
+        // Bloqueia matrícula direta em trilha privada sem acesso prévio
+        if ("PRIVADA".equals(trilha.getTipo())) {
+            boolean jaTemAcesso = matriculaRepository
+                    .existsByAlunoIdAndTrilhaIdAndAtivoTrue(authenticatedAlunoId, trilhaId);
+            if (!jaTemAcesso) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "Esta trilha é privada. Informe o código de acesso para se matricular.");
+            }
+        }
 
         // Verifica se já existe (ativa ou inativa)
         matriculaRepository.findByAlunoIdAndTrilhaId(authenticatedAlunoId, trilhaId).ifPresent(m -> {

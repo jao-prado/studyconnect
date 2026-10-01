@@ -4,6 +4,7 @@ import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
 import com.itb.inf3em.studyconnect.model.entity.Trilha;
 import com.itb.inf3em.studyconnect.model.entity.Turma;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
+import com.itb.inf3em.studyconnect.model.repository.MatriculaTrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.TurmaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
@@ -51,6 +52,7 @@ class DataIntegrityExposureTest {
     private TrilhaRepository trilhaRepository;
     private TurmaRepository turmaRepository;
     private UsuarioRepository usuarioRepository;
+    private MatriculaTrilhaRepository matriculaRepository;
     private TrilhaService trilhaService;
     private TurmaService turmaService;
 
@@ -59,7 +61,8 @@ class DataIntegrityExposureTest {
         trilhaRepository = mock(TrilhaRepository.class);
         turmaRepository = mock(TurmaRepository.class);
         usuarioRepository = mock(UsuarioRepository.class);
-        trilhaService = new TrilhaService(trilhaRepository, usuarioRepository, new TrilhaAuthorization(currentUser));
+        matriculaRepository = mock(MatriculaTrilhaRepository.class);
+        trilhaService = new TrilhaService(trilhaRepository, usuarioRepository, matriculaRepository, new TrilhaAuthorization(currentUser), currentUser);
         turmaService = new TurmaService(turmaRepository, usuarioRepository, new TurmaAuthorization(currentUser));
     }
 

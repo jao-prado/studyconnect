@@ -15,19 +15,27 @@ public class TrilhaDTO {
     private String professorNome;
     private LocalDateTime criadaEm;
     private LocalDateTime atualizadaEm;
+    /** Presente apenas quando o solicitante é o professor responsável ou admin. */
+    private String codigoAcesso;
 
-    // Constructor from Trilha entity
+    /** Construtor padrão — sem expor o código de acesso. */
     public TrilhaDTO(Trilha trilha) {
-        this.id = trilha.getId();
-        this.nome = trilha.getNome();
-        this.descricao = trilha.getDescricao();
-        this.tipo = trilha.getTipo();
-        this.nivel = trilha.getNivel();
-        this.disciplina = trilha.getDisciplina();
-        this.professorId = trilha.getProfessorId();
+        this(trilha, false);
+    }
+
+    /** Construtor com controle de exposição do código. */
+    public TrilhaDTO(Trilha trilha, boolean incluirCodigo) {
+        this.id            = trilha.getId();
+        this.nome          = trilha.getNome();
+        this.descricao     = trilha.getDescricao();
+        this.tipo          = trilha.getTipo();
+        this.nivel         = trilha.getNivel();
+        this.disciplina    = trilha.getDisciplina();
+        this.professorId   = trilha.getProfessorId();
         this.professorNome = trilha.getProfessorNome();
-        this.criadaEm = trilha.getCriadaEm();
-        this.atualizadaEm = trilha.getAtualizadaEm();
+        this.criadaEm      = trilha.getCriadaEm();
+        this.atualizadaEm  = trilha.getAtualizadaEm();
+        this.codigoAcesso  = incluirCodigo ? trilha.getCodigoAcesso() : null;
     }
 
     // Default constructor
@@ -103,4 +111,7 @@ public class TrilhaDTO {
     public void setAtualizadaEm(LocalDateTime atualizadaEm) {
         this.atualizadaEm = atualizadaEm;
     }
+
+    public String getCodigoAcesso()                    { return codigoAcesso; }
+    public void   setCodigoAcesso(String codigoAcesso) { this.codigoAcesso = codigoAcesso; }
 }

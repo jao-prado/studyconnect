@@ -5,6 +5,7 @@ import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
 import com.itb.inf3em.studyconnect.model.entity.Trilha;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.AulaRepository;
+import com.itb.inf3em.studyconnect.model.repository.MatriculaTrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
 import com.itb.inf3em.studyconnect.model.services.AulaService;
@@ -34,6 +35,7 @@ class TrilhaAulaOwnershipTest {
     private TrilhaRepository trilhaRepository;
     private AulaRepository aulaRepository;
     private UsuarioRepository usuarioRepository;
+    private MatriculaTrilhaRepository matriculaRepository;
     private TrilhaService trilhaService;
     private AulaService aulaService;
 
@@ -42,8 +44,9 @@ class TrilhaAulaOwnershipTest {
         trilhaRepository = mock(TrilhaRepository.class);
         aulaRepository = mock(AulaRepository.class);
         usuarioRepository = mock(UsuarioRepository.class);
+        matriculaRepository = mock(MatriculaTrilhaRepository.class);
         TrilhaAuthorization authorization = new TrilhaAuthorization(currentUser);
-        trilhaService = new TrilhaService(trilhaRepository, usuarioRepository, authorization);
+        trilhaService = new TrilhaService(trilhaRepository, usuarioRepository, matriculaRepository, authorization, currentUser);
         aulaService = new AulaService(aulaRepository, trilhaRepository, authorization);
     }
 
