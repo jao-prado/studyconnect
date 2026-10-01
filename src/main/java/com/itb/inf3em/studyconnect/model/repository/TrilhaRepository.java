@@ -15,6 +15,8 @@ public interface TrilhaRepository extends JpaRepository<Trilha, Long> {
 
     List<Trilha> findByTipo(String tipo);
 
+    java.util.Optional<Trilha> findByCodigoAcesso(String codigoAcesso);
+
     /**
      * Trilhas visíveis para um aluno:
      *  - todas as públicas

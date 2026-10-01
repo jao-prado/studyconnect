@@ -200,6 +200,19 @@ public class TrilhaService {
     }
 
     /**
+     * Aluno informa apenas o código; o backend resolve a trilha internamente.
+     */
+    public void concederAcessoPorCodigo(String codigoInformado) {
+        if (codigoInformado == null || codigoInformado.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Código de acesso obrigatório.");
+        }
+        Trilha trilha = trilhaRepository.findByCodigoAcesso(codigoInformado.trim().toUpperCase())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Nenhuma trilha encontrada com este código."));
+        concederAcesso(trilha.getId(), codigoInformado);
+    }
+
+    /**
      * Valida o código de acesso e registra a matrícula do aluno na trilha privada.
      * Identificação do aluno exclusivamente pelo JWT — não aceita usuarioId no body.
      */

@@ -88,6 +88,18 @@ public class TrilhaController {
     }
 
     /**
+     * POST /api/v1/trilhas/acesso
+     * Aluno informa apenas o código; o backend resolve a trilha.
+     * Body: { "codigo": "XXXXXXXXXXXX" }
+     */
+    @PostMapping("/acesso")
+    public ResponseEntity<Map<String, String>> concederAcessoPorCodigo(
+            @RequestBody Map<String, String> body) {
+        trilhaService.concederAcessoPorCodigo(body.get("codigo"));
+        return ResponseEntity.ok(Map.of("message", "Acesso concedido. Você já pode acessar esta trilha."));
+    }
+
+    /**
      * POST /api/v1/trilhas/{id}/acesso
      * Aluno informa o código e recebe acesso à trilha privada.
      * Body: { "codigo": "XXXXXXXXXXXX" }
