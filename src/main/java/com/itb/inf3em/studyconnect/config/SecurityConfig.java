@@ -35,7 +35,7 @@ public class SecurityConfig {
                                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "Acesso negado.")))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/health").permitAll()
+                        .requestMatchers("/health").permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/google",
@@ -64,7 +64,7 @@ public class SecurityConfig {
                 // Pipeline: RateLimitPublicFilter → JwtAuthenticationFilter → RateLimitAuthFilter
                 //
                 // Âncoras usadas (filtros padrão com ordem registrada no Spring Security):
-                //   BasicAuthenticationFilter  — posição anterior ao UsernamePasswordAuthenticationFilter
+                //   BasicAuthenticationFilter — posição anterior ao UsernamePasswordAuthenticationFilter
                 //   UsernamePasswordAuthenticationFilter — posição de referência central
                 //
                 // Resultado final na cadeia:
