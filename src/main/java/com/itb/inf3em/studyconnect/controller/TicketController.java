@@ -32,6 +32,7 @@ public class TicketController {
     /** GET /api/v1/tickets — lista todos (admin) */
     @GetMapping
     public ResponseEntity<List<TicketDTO>> listar() {
+        currentUser.requireAdmin();
         return ResponseEntity.ok(ticketService.listarTodos());
     }
 
@@ -56,12 +57,14 @@ public class TicketController {
     public ResponseEntity<TicketDTO> responder(
             @PathVariable Long id,
             @RequestBody Map<String, String> body) {
+        currentUser.requireAdmin();
         return ResponseEntity.ok(ticketService.responder(id, body.get("resposta")));
     }
 
     /** POST /api/v1/tickets/{id}/fechar */
     @PostMapping("/{id}/fechar")
     public ResponseEntity<TicketDTO> fechar(@PathVariable Long id) {
+        currentUser.requireAdmin();
         return ResponseEntity.ok(ticketService.fechar(id));
     }
 }

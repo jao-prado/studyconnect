@@ -13,8 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class TicketService {
@@ -53,8 +55,15 @@ public class TicketService {
         t.setUsuarioId(usuario.getId());
         t.setNome(usuario.getNome());
         t.setEmail(usuario.getEmail());
+        t.setProtocolo(gerarProtocolo());
 
         return new TicketDTO(ticketRepository.save(t));
+    }
+
+    private String gerarProtocolo() {
+        String data = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String hex  = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        return "SC-" + data + "-" + hex;
     }
 
     public List<TicketDTO> listarTodos() {
@@ -85,25 +94,28 @@ public class TicketService {
         t.setResposta(resposta.trim());
         t.setStatus("RESPONDIDO");
         t.setRespondidaEm(LocalDateTime.now());
-        TicketDTO dto = new TicketDTO(ticketRepository.save(t));
 
+        boolean emailOk = false;
         if (t.getEmail() != null && !t.getEmail().isBlank()) {
             try {
-                String subject = "Resposta ao seu ticket #" + t.getId() + " — StudyConnect";
+                String protocolo = t.getProtocolo() != null ? t.getProtocolo() : "#" + t.getId();
+                String subject = "[" + protocolo + "] Resposta ao seu chamado — StudyConnect";
                 String body = "Olá" + (t.getNome() != null ? ", " + t.getNome() : "") + "!\n\n"
-                    + "Seu ticket foi respondido:\n\n"
-                    + "Assunto: " + t.getTipo() + "\n"
+                    + "Seu chamado foi respondido.\n\n"
+                    + "Protocolo: " + protocolo + "\n"
+                    + "Categoria: " + t.getTipo() + "\n"
                     + "Sua mensagem: " + t.getMensagem() + "\n\n"
-                    + "Resposta da equipe:\n" + resposta.trim() + "\n\n"
+                    + "Resposta da equipe StudyConnect:\n" + resposta.trim() + "\n\n"
                     + "Atenciosamente,\nEquipe StudyConnect";
                 emailService.sendSimpleEmail(t.getEmail(), subject, body);
+                emailOk = true;
             } catch (Exception ex) {
-                // nao deixa falha de e-mail derrubar a resposta
                 log.warn("[TicketService] Falha ao enviar e-mail para {}: {}", t.getEmail(), ex.getMessage());
             }
         }
 
-        return dto;
+        t.setEmailEnviado(emailOk);
+        return new TicketDTO(ticketRepository.save(t));
     }
 
     public TicketDTO fechar(Long id) {

@@ -32,6 +32,12 @@ public class Ticket {
     @Column(length = 20, nullable = false)
     private String status = "ABERTO"; // ABERTO | RESPONDIDO | FECHADO
 
+    @Column(length = 20)
+    private String protocolo;
+
+    @Column(name = "email_enviado")
+    private Boolean emailEnviado;
+
     @Column(name = "criada_em", nullable = false, updatable = false)
     private LocalDateTime criadaEm;
 
@@ -58,7 +64,11 @@ public class Ticket {
     public void setResposta(String resposta)     { this.resposta = resposta; }
     public String getStatus()                    { return status; }
     public void setStatus(String status)         { this.status = status; }
-    public LocalDateTime getCriadaEm()           { return criadaEm; }
-    public LocalDateTime getRespondidaEm()       { return respondidaEm; }
-    public void setRespondidaEm(LocalDateTime t) { this.respondidaEm = t; }
+    public String getProtocolo()                   { return protocolo; }
+    public void setProtocolo(String protocolo)     { this.protocolo = protocolo; }
+    public Boolean getEmailEnviado()               { return emailEnviado; }
+    public void setEmailEnviado(Boolean v)         { this.emailEnviado = v; }
+    public LocalDateTime getCriadaEm()             { return criadaEm; }
+    public LocalDateTime getRespondidaEm()         { return respondidaEm; }
+    public void setRespondidaEm(LocalDateTime t)   { this.respondidaEm = t; }
 }
