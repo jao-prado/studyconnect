@@ -113,27 +113,26 @@ public class UsuarioService {
         return deleted;
     }
 
-    /**
-     * Envia o código MFA de exclusão de conta para o e-mail do usuário,
-     * após confirmar que a senha está correta.
-     * Só é chamado quando mfaHabilitado=true (ou ADMIN).
-     */
-    public void requestDeleteChallenge(long id, String senha) {
-        Usuario usuario = findById(id);
+    /** Confere a senha de quem solicitou a exclusão e envia o desafio MFA dessa conta. */
+    public void requestDeleteChallenge(long targetId, long requesterId, String senha) {
+        Usuario target = findById(targetId);
+        Usuario requester = findById(requesterId);
+        validarPermissaoExclusao(targetId, requester);
 
-        if (usuario.getSenha() == null) {
+        if (requester.getSenha() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Usuários autenticados via Google não podem usar este fluxo.");
         }
-        if (!passwordEncoder.matches(senha, usuario.getSenha())) {
+        if (!passwordEncoder.matches(senha, requester.getSenha())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha incorreta.");
         }
 
-        mfaService.iniciarDesafioExclusao(usuario);
+        mfaService.iniciarDesafioExclusao(requester);
     }
 
     /**
-     * Exclui a conta após validar senha e, se MFA ativo, o código de exclusão.
+     * Exclui a conta alvo após validar senha e, se MFA ativo, o código de exclusão
+     * da conta autenticada que solicitou a operação.
      *
      * Ordem de exclusão respeita as FKs (sem ON DELETE CASCADE):
      *  1. EmailChangeToken
@@ -147,37 +146,46 @@ public class UsuarioService {
      * 11. Usuario
      */
     @Transactional
-    public void deleteWithAuth(long id, DeleteAccountRequestDTO dto) {
-        Usuario usuario = findById(id);
+    public void deleteWithAuth(long targetId, long requesterId, DeleteAccountRequestDTO dto) {
+        Usuario target = findById(targetId);
+        Usuario requester = findById(requesterId);
+        validarPermissaoExclusao(targetId, requester);
 
         // Sempre exige senha
-        if (usuario.getSenha() == null) {
+        if (requester.getSenha() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Usuários autenticados via Google não podem usar este fluxo.");
         }
-        if (!passwordEncoder.matches(dto.getSenha(), usuario.getSenha())) {
+        if (dto.getSenha() == null || !passwordEncoder.matches(dto.getSenha(), requester.getSenha())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha incorreta.");
         }
 
         // Se MFA ativo (ou ADMIN), exige código de exclusão
-        boolean exigeMfa = usuario.isMfaHabilitado()
-                || usuario.getTipoUsuario() == TipoUsuario.ADMIN;
+        boolean exigeMfa = requester.isMfaHabilitado()
+                || requester.getTipoUsuario() == TipoUsuario.ADMIN;
         if (exigeMfa) {
             if (dto.getCodigoMfa() == null || dto.getCodigoMfa().isBlank()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Código MFA obrigatório para excluir esta conta.");
             }
-            mfaService.validarCodigoExclusao(id, dto.getCodigoMfa());
+            mfaService.validarCodigoExclusao(requesterId, dto.getCodigoMfa());
         }
 
-        excluirDependenciasEUsuario(id, usuario);
+        excluirDependenciasEUsuario(targetId, target);
     }
 
-    /** Mantido para uso interno (ex: admin excluindo outra conta sem senha própria). */
+    /** Exclusão interna sem reautenticação, não exposta pelo controller. */
     @Transactional
     public void delete(long id) {
         Usuario usuario = findById(id);
         excluirDependenciasEUsuario(id, usuario);
+    }
+
+    private void validarPermissaoExclusao(long targetId, Usuario requester) {
+        if (requester.getId() != targetId && requester.getTipoUsuario() != TipoUsuario.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Apenas administradores podem excluir outros usuários.");
+        }
     }
 
     // ── privado ───────────────────────────────────────────────────────────────

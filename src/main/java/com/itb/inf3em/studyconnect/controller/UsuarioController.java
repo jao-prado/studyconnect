@@ -55,34 +55,27 @@ public class UsuarioController {
         return ResponseEntity.ok(new UsuarioDTO(atualizado));
     }
 
-    /**
-     * POST /api/v1/usuarios/{id}/delete-challenge
-     * Valida a senha e envia o código MFA de exclusão por e-mail.
-     * Só deve ser chamado quando mfaHabilitado=true.
-     */
+    /** O id identifica o alvo; senha e código são sempre da sessão autenticada. */
     @PostMapping("/{id}/delete-challenge")
     public ResponseEntity<Map<String, String>> requestDeleteChallenge(
             @PathVariable Long id,
             @RequestBody Map<String, String> body) {
-        currentUser.requireSameUserOrAdmin(id);
+        AuthenticatedUser requester = currentUser.requireSameUserOrAdmin(id);
         String senha = body.get("senha");
         if (senha == null || senha.isBlank()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("message", "Senha obrigatória."));
         }
-        usuarioService.requestDeleteChallenge(id, senha);
+        usuarioService.requestDeleteChallenge(id, requester.usuarioId(), senha);
         return ResponseEntity.ok(Map.of("message", "Código enviado para o seu e-mail."));
     }
 
-    /**
-     * DELETE /api/v1/usuarios/{id}
-     * Exclui a conta após validar senha (+ código MFA se habilitado).
-     */
+    /** O id identifica o alvo; o corpo contém a senha e o MFA de quem está autenticado. */
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deletar(@PathVariable Long id,
                                           @RequestBody DeleteAccountRequestDTO dto) {
-        currentUser.requireSameUserOrAdmin(id);
-        usuarioService.deleteWithAuth(id, dto);
+        AuthenticatedUser requester = currentUser.requireSameUserOrAdmin(id);
+        usuarioService.deleteWithAuth(id, requester.usuarioId(), dto);
         return ResponseEntity.ok("Usuário excluído com sucesso!");
     }
 }
