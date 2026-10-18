@@ -59,8 +59,13 @@ public class GoogleAuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token Google invalido.");
         }
 
-        Usuario usuario = usuarioRepository.findByEmail(email.toLowerCase())
-                .orElseGet(() -> criarUsuarioGoogle(nome, email, googleId, fotoUrl));
+        Usuario usuario = usuarioRepository.findByGoogleId(googleId)
+                .orElseGet(() -> usuarioRepository.findByEmail(email.toLowerCase())
+                        .orElseGet(() -> criarUsuarioGoogle(nome, email, googleId, fotoUrl)));
+
+        if (usuario.getGoogleId() != null && !usuario.getGoogleId().equals(googleId)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Conta Google não corresponde ao usuário.");
+        }
 
         // Atualiza googleId e foto se ainda nao estiver salvo
         boolean atualizado = false;

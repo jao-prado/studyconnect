@@ -59,13 +59,9 @@ public class UsuarioController {
     @PostMapping("/{id}/delete-challenge")
     public ResponseEntity<Map<String, String>> requestDeleteChallenge(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body) {
+            @RequestBody(required = false) Map<String, String> body) {
         AuthenticatedUser requester = currentUser.requireSameUserOrAdmin(id);
-        String senha = body.get("senha");
-        if (senha == null || senha.isBlank()) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("message", "Senha obrigatória."));
-        }
+        String senha = body == null ? null : body.get("senha");
         usuarioService.requestDeleteChallenge(id, requester.usuarioId(), senha);
         return ResponseEntity.ok(Map.of("message", "Código enviado para o seu e-mail."));
     }

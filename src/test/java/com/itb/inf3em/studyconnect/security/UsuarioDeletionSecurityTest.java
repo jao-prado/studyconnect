@@ -94,6 +94,27 @@ class UsuarioDeletionSecurityTest {
     }
 
     @Test
+    void requestDeleteChallengeEnviaCodigoGoogleSemPedirSenha() {
+        admin.setSenha(null);
+        admin.setGoogleId("google-admin");
+
+        usuarioService.requestDeleteChallenge(TARGET_ID, ADMIN_ID, null);
+
+        verify(mfaService).iniciarDesafioExclusao(admin);
+    }
+
+    @Test
+    void requestDeleteChallengeNaoPermitePularSenhaEmContaLocal() {
+        assertThatThrownBy(() ->
+                usuarioService.requestDeleteChallenge(TARGET_ID, ADMIN_ID, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verify(mfaService, never()).iniciarDesafioExclusao(any());
+    }
+
+    @Test
     void deleteWithAuthConfereCredenciaisDoAdminEExcluiSomenteAlvo() {
         DeleteAccountRequestDTO dto = new DeleteAccountRequestDTO();
         dto.setSenha("senha-admin");
@@ -132,6 +153,48 @@ class UsuarioDeletionSecurityTest {
                         .isEqualTo(HttpStatus.BAD_REQUEST));
 
         verify(usuarioRepository, never()).deleteById(TARGET_ID);
+        verify(mfaService, never()).validarCodigoExclusao(anyLong(), anyString());
+    }
+
+    @Test
+    void deleteWithAuthExigeCodigoParaContaGoogleSemSenha() {
+        admin.setSenha(null);
+        admin.setGoogleId("google-admin");
+        DeleteAccountRequestDTO dto = new DeleteAccountRequestDTO();
+        dto.setCodigoMfa("123456");
+
+        usuarioService.deleteWithAuth(ADMIN_ID, ADMIN_ID, dto);
+
+        verify(mfaService).validarCodigoExclusao(ADMIN_ID, "123456");
+        verify(usuarioRepository).deleteById(ADMIN_ID);
+    }
+
+    @Test
+    void deleteWithAuthRejeitaContaGoogleSemCodigo() {
+        admin.setSenha(null);
+        admin.setGoogleId("google-admin");
+        DeleteAccountRequestDTO dto = new DeleteAccountRequestDTO();
+
+        assertThatThrownBy(() -> usuarioService.deleteWithAuth(ADMIN_ID, ADMIN_ID, dto))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verify(usuarioRepository, never()).deleteById(ADMIN_ID);
+        verify(mfaService, never()).validarCodigoExclusao(anyLong(), anyString());
+    }
+
+    @Test
+    void deleteWithAuthNaoPermiteContaLocalPularSenhaComCodigo() {
+        DeleteAccountRequestDTO dto = new DeleteAccountRequestDTO();
+        dto.setCodigoMfa("123456");
+
+        assertThatThrownBy(() -> usuarioService.deleteWithAuth(ADMIN_ID, ADMIN_ID, dto))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.UNAUTHORIZED));
+
+        verify(usuarioRepository, never()).deleteById(ADMIN_ID);
         verify(mfaService, never()).validarCodigoExclusao(anyLong(), anyString());
     }
 

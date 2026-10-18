@@ -27,6 +27,14 @@ public class EmailChangeController {
         return ResponseEntity.ok(Map.of("message", "Aviso enviado para o seu e-mail atual. Verifique sua caixa de entrada."));
     }
 
+    /** Retoma a solicitação pendente após o usuário voltar do link de confirmação. */
+    @GetMapping("/email-change/status")
+    public ResponseEntity<Map<String, String>> status() {
+        currentUser.require();
+        Map<String, String> status = emailChangeService.obterStatus();
+        return ResponseEntity.ok(status);
+    }
+
     /** Etapa 1b — usuário clicou no link de confirmação */
     @GetMapping("/email-change/confirm")
     public ResponseEntity<Map<String, String>> confirm(@RequestParam String token) {

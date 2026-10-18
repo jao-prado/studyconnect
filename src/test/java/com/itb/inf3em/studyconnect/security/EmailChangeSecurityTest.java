@@ -74,6 +74,17 @@ class EmailChangeSecurityTest {
     }
 
     @Test
+    void statusRetornaSomenteSolicitacaoDoUsuarioAutenticado() {
+        authenticate(10L);
+        EmailChangeToken token = token(10L, "novo@example.com", null, "STEP2", Instant.now().plusSeconds(60));
+        when(tokenRepository.findByUsuarioId(10L)).thenReturn(Optional.of(token));
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario(10L, "atual@example.com")));
+
+        assertEquals(Map.of("etapa", "STEP2", "emailNovo", "novo@example.com"),
+                emailChangeService.obterStatus());
+    }
+
+    @Test
     void controllerIgnoresUsuarioIdFromRequestBody() {
         authenticate(10L);
         EmailChangeService service = mock(EmailChangeService.class);

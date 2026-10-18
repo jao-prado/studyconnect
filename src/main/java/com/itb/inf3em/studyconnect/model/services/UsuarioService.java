@@ -113,17 +113,19 @@ public class UsuarioService {
         return deleted;
     }
 
-    /** Confere a senha de quem solicitou a exclusão e envia o desafio MFA dessa conta. */
+    /** Confere a senha local ou a identidade Google e envia o desafio de exclusão. */
     public void requestDeleteChallenge(long targetId, long requesterId, String senha) {
         Usuario target = findById(targetId);
         Usuario requester = findById(requesterId);
         validarPermissaoExclusao(targetId, requester);
 
-        if (requester.getSenha() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Usuários autenticados via Google não podem usar este fluxo.");
-        }
-        if (!passwordEncoder.matches(senha, requester.getSenha())) {
+        if (senha == null || senha.isBlank()) {
+            if (requester.getGoogleId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Confirmação por código disponível apenas para contas Google.");
+            }
+        } else if (requester.getSenha() == null
+                || !passwordEncoder.matches(senha, requester.getSenha())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha incorreta.");
         }
 
@@ -131,8 +133,7 @@ public class UsuarioService {
     }
 
     /**
-     * Exclui a conta alvo após validar senha e, se MFA ativo, o código de exclusão
-     * da conta autenticada que solicitou a operação.
+     * Exclui a conta alvo após validar a senha local ou o código enviado por e-mail.
      *
      * Ordem de exclusão respeita as FKs (sem ON DELETE CASCADE):
      *  1. EmailChangeToken
@@ -151,22 +152,23 @@ public class UsuarioService {
         Usuario requester = findById(requesterId);
         validarPermissaoExclusao(targetId, requester);
 
-        // Sempre exige senha
-        if (requester.getSenha() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Usuários autenticados via Google não podem usar este fluxo.");
-        }
-        if (dto.getSenha() == null || !passwordEncoder.matches(dto.getSenha(), requester.getSenha())) {
+        boolean senhaInformada = dto.getSenha() != null && !dto.getSenha().isBlank();
+        if (senhaInformada) {
+            if (requester.getSenha() == null
+                    || !passwordEncoder.matches(dto.getSenha(), requester.getSenha())) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha incorreta.");
+            }
+        } else if (requester.getGoogleId() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha incorreta.");
         }
 
-        // Se MFA ativo (ou ADMIN), exige código de exclusão
-        boolean exigeMfa = requester.isMfaHabilitado()
+        // Contas Google confirmam por código; contas locais mantêm senha e MFA.
+        boolean exigeCodigo = !senhaInformada || requester.isMfaHabilitado()
                 || requester.getTipoUsuario() == TipoUsuario.ADMIN;
-        if (exigeMfa) {
+        if (exigeCodigo) {
             if (dto.getCodigoMfa() == null || dto.getCodigoMfa().isBlank()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Código MFA obrigatório para excluir esta conta.");
+                        "Código de confirmação obrigatório para excluir esta conta.");
             }
             mfaService.validarCodigoExclusao(requesterId, dto.getCodigoMfa());
         }

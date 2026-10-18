@@ -1,6 +1,8 @@
 package com.itb.inf3em.studyconnect.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
+import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
 import com.itb.inf3em.studyconnect.model.services.GoogleAuthService;
 import com.itb.inf3em.studyconnect.model.services.MfaService;
@@ -17,9 +19,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestToUriTemplate;
@@ -32,6 +36,8 @@ class GoogleAuthServiceTest {
 
     private MockRestServiceServer mockServer;
     private GoogleAuthService service;
+    private UsuarioRepository usuarioRepository;
+    private JwtService jwtService;
     private final ObjectMapper mapper = new ObjectMapper();
 
     @BeforeEach
@@ -40,9 +46,11 @@ class GoogleAuthServiceTest {
         mockServer = MockRestServiceServer.bindTo(builder).build();
         RestClient restClient = builder.build();
 
+        usuarioRepository = mock(UsuarioRepository.class);
+        jwtService = mock(JwtService.class);
         service = new GoogleAuthService(
-                mock(UsuarioRepository.class),
-                mock(JwtService.class),
+                usuarioRepository,
+                jwtService,
                 restClient,
                 mock(MfaService.class)
         );
@@ -77,6 +85,31 @@ class GoogleAuthServiceTest {
         Map<String, Object> result = service.verificarToken("valid-token");
 
         assertThat(result.get("email")).isEqualTo("user@example.com");
+        mockServer.verify();
+    }
+
+    @Test
+    void loginGoogleLocalizaContaPeloIdMesmoAposTrocaDoEmail() throws Exception {
+        Map<String, Object> payload = validPayload();
+        payload.put("email", "novo@example.com");
+        expectTokenInfo("changed-email-token", payload);
+
+        Usuario usuario = new Usuario();
+        usuario.setId(7L);
+        usuario.setNome("Test User");
+        usuario.setEmail("anterior@example.com");
+        usuario.setGoogleId("1234567890");
+        usuario.setTipoUsuario(TipoUsuario.ALUNO);
+        usuario.setAtivo(true);
+        when(usuarioRepository.findByGoogleId("1234567890")).thenReturn(Optional.of(usuario));
+        when(jwtService.generateToken(usuario)).thenReturn("access-token");
+        when(jwtService.getExpirationSeconds()).thenReturn(3600L);
+
+        var response = service.autenticar("changed-email-token");
+
+        assertThat(response.getId()).isEqualTo(7L);
+        assertThat(response.getEmail()).isEqualTo("anterior@example.com");
+        verify(usuarioRepository, never()).findByEmail("novo@example.com");
         mockServer.verify();
     }
 

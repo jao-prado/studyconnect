@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.security.SecureRandom;
 import java.util.UUID;
+import java.util.Map;
 
 @Service
 public class EmailChangeService {
@@ -67,6 +68,29 @@ public class EmailChangeService {
                 + "Se não foi você, ignore este e-mail. Nenhuma alteração será feita.";
 
         emailService.sendSimpleEmail(usuario.getEmail(), "Confirmação de troca de e-mail — StudyConnect", corpo);
+    }
+
+    /** Informa apenas o estado da solicitação pertencente à sessão autenticada. */
+    @Transactional
+    public Map<String, String> obterStatus() {
+        Long usuarioId = currentUser.require().usuarioId();
+        EmailChangeToken token = tokenRepository.findByUsuarioId(usuarioId).orElse(null);
+        if (token == null) {
+            return Map.of();
+        }
+        if (Instant.now().isAfter(token.getExpiresAt())) {
+            tokenRepository.delete(token);
+            return Map.of();
+        }
+
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+        if (!usuario.getEmail().equalsIgnoreCase(token.getEmailAtual())) {
+            tokenRepository.delete(token);
+            return Map.of();
+        }
+
+        return Map.of("etapa", token.getEtapa(), "emailNovo", token.getEmailNovo());
     }
 
     /** Etapa 1b: usuário clicou no link — avança para etapa 2 e envia OTP ao novo e-mail. */
@@ -133,8 +157,23 @@ public class EmailChangeService {
         Usuario usuario = usuarioRepository.findById(token.getUsuarioId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
+        if (!usuario.getEmail().equalsIgnoreCase(token.getEmailAtual())) {
+            tokenRepository.delete(token);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O e-mail atual da conta foi alterado. Inicie uma nova solicitação.");
+        }
+        if (usuarioRepository.existsByEmail(token.getEmailNovo())) {
+            tokenRepository.delete(token);
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Este e-mail já está cadastrado por outro usuário.");
+        }
+
         usuario.setEmail(token.getEmailNovo());
         usuarioRepository.save(usuario);
+        emailService.sendSimpleEmail(token.getEmailAtual(),
+                "E-mail da conta StudyConnect alterado",
+                "O e-mail da sua conta StudyConnect foi alterado para " + token.getEmailNovo() + ".\n\n"
+                        + "Se você não fez esta alteração, entre em contato com o suporte imediatamente.");
         tokenRepository.delete(token);
     }
 }
