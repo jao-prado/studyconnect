@@ -2,11 +2,14 @@ package com.itb.inf3em.studyconnect.model.services;
 
 import com.itb.inf3em.studyconnect.model.dto.ProgressoDTO;
 import com.itb.inf3em.studyconnect.model.entity.ProgressoAula;
+import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
 import com.itb.inf3em.studyconnect.model.repository.AulaRepository;
 import com.itb.inf3em.studyconnect.model.repository.MatriculaTrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.ProgressoAulaRepository;
 import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
 import com.itb.inf3em.studyconnect.security.AlunoAuthorization;
+import com.itb.inf3em.studyconnect.security.AulaAuthorization;
+import com.itb.inf3em.studyconnect.security.AuthenticatedUser;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,17 +25,20 @@ public class ProgressoAulaService {
     private final TrilhaRepository trilhaRepository;
     private final MatriculaTrilhaRepository matriculaRepository;
     private final AlunoAuthorization alunoAuthorization;
+    private final AulaAuthorization aulaAuthorization;
 
     public ProgressoAulaService(ProgressoAulaRepository progressoRepository,
                                 AulaRepository aulaRepository,
                                 TrilhaRepository trilhaRepository,
                                 MatriculaTrilhaRepository matriculaRepository,
-                                AlunoAuthorization alunoAuthorization) {
+                                AlunoAuthorization alunoAuthorization,
+                                AulaAuthorization aulaAuthorization) {
         this.progressoRepository = progressoRepository;
         this.aulaRepository = aulaRepository;
         this.trilhaRepository = trilhaRepository;
         this.matriculaRepository = matriculaRepository;
         this.alunoAuthorization = alunoAuthorization;
+        this.aulaAuthorization = aulaAuthorization;
     }
 
     /** Upsert: marca aula como concluída. Idempotente. */
@@ -52,6 +58,7 @@ public class ProgressoAulaService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Matricula ativa na trilha e obrigatoria para registrar progresso.");
         }
+        aulaAuthorization.requirePublishedForCurrentStudent(aula);
 
         ProgressoAula progresso = progressoRepository
             .findByAlunoIdAndAulaId(authenticatedAlunoId, aulaId)
@@ -85,13 +92,21 @@ public class ProgressoAulaService {
     /** Retorna progresso do aluno em uma trilha específica. */
     public ProgressoDTO getProgressoTrilha(Long trilhaId, Long alunoId) {
         alunoAuthorization.requireCanAccessAluno(alunoId);
-        trilhaRepository.findById(trilhaId).orElseThrow(() ->
+        var trilha = trilhaRepository.findById(trilhaId).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, "Trilha nao encontrada."));
+        AuthenticatedUser user = aulaAuthorization.requireCanReadTrilha(trilha);
         List<Long> aulaIds = aulaRepository
-            .findByTrilhaIdOrderByOrdem(trilhaId)
+            .findByTrilhaIdAndStatusOrderByOrdem(trilhaId, "PUBLICADA")
             .stream()
             .map(a -> a.getId())
             .toList();
+
+        if (user.tipoUsuario() == TipoUsuario.ADMIN) {
+            aulaIds = aulaRepository.findByTrilhaIdOrderByOrdem(trilhaId)
+                    .stream()
+                    .map(a -> a.getId())
+                    .toList();
+        }
 
         List<Long> concluidas = progressoRepository
             .findByAlunoIdAndAulaIdInAndConcluidaTrue(alunoId, aulaIds.isEmpty() ? List.of(-1L) : aulaIds)

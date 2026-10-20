@@ -41,9 +41,11 @@ class ProgressoMatriculaAuthorizationTest {
         trilhaRepository = mock(TrilhaRepository.class);
         matriculaRepository = mock(MatriculaTrilhaRepository.class);
         AlunoAuthorization alunoAuthorization = new AlunoAuthorization(currentUser);
+        AulaAuthorization aulaAuthorization = new AulaAuthorization(
+                currentUser, new TrilhaAuthorization(currentUser), matriculaRepository);
         progressoService = new ProgressoAulaService(
                 progressoRepository, aulaRepository, trilhaRepository,
-                matriculaRepository, alunoAuthorization);
+                matriculaRepository, alunoAuthorization, aulaAuthorization);
     }
 
     @AfterEach
@@ -118,6 +120,19 @@ class ProgressoMatriculaAuthorizationTest {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> progressoService.concluirAula(10L, 200L));
         assertEquals(403, ex.getStatusCode().value());
+    }
+
+    @Test
+    void alunoMatriculadoNaoConcluiAulaEmRascunho() {
+        authenticate(10L, TipoUsuario.ALUNO);
+        Aula rascunho = aula(200L, 100L);
+        rascunho.setStatus("RASCUNHO");
+        when(aulaRepository.findById(200L)).thenReturn(Optional.of(rascunho));
+        when(trilhaRepository.findById(100L)).thenReturn(Optional.of(trilha(100L)));
+        when(matriculaRepository.existsByAlunoIdAndTrilhaIdAndAtivoTrue(10L, 100L)).thenReturn(true);
+
+        assertThrows(AccessDeniedException.class, () -> progressoService.concluirAula(10L, 200L));
+        verify(progressoRepository, never()).save(any());
     }
 
     // ── cenário 4: matriculado em trilha A tenta concluir aula de trilha B → 403

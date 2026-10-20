@@ -5,6 +5,7 @@ import com.itb.inf3em.studyconnect.model.entity.Duvida;
 import com.itb.inf3em.studyconnect.model.repository.AulaRepository;
 import com.itb.inf3em.studyconnect.model.repository.DuvidaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
+import com.itb.inf3em.studyconnect.security.AulaAuthorization;
 import com.itb.inf3em.studyconnect.security.DuvidaAuthorization;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,15 +22,18 @@ public class DuvidaService {
     private final UsuarioRepository usuarioRepository;
     private final AulaRepository aulaRepository;
     private final DuvidaAuthorization duvidaAuthorization;
+    private final AulaAuthorization aulaAuthorization;
 
     public DuvidaService(DuvidaRepository duvidaRepository,
                          UsuarioRepository usuarioRepository,
                          AulaRepository aulaRepository,
-                         DuvidaAuthorization duvidaAuthorization) {
+                         DuvidaAuthorization duvidaAuthorization,
+                         AulaAuthorization aulaAuthorization) {
         this.duvidaRepository = duvidaRepository;
         this.usuarioRepository = usuarioRepository;
         this.aulaRepository = aulaRepository;
         this.duvidaAuthorization = duvidaAuthorization;
+        this.aulaAuthorization = aulaAuthorization;
     }
 
     private DuvidaDTO toDTO(Duvida d) {
@@ -54,7 +58,8 @@ public class DuvidaService {
 
         var aula = duvidaAuthorization.getAula(aulaId);
 
-        duvidaAuthorization.getTrilha(aula.getTrilhaId());
+        var trilha = duvidaAuthorization.getTrilha(aula.getTrilhaId());
+        aulaAuthorization.requireCanReadAula(aula, trilha);
 
         Duvida d = new Duvida();
         d.setAlunoId(alunoId);

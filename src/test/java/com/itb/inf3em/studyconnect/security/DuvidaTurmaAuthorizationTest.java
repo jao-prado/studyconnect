@@ -8,6 +8,7 @@ import com.itb.inf3em.studyconnect.model.entity.Turma;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.AulaRepository;
 import com.itb.inf3em.studyconnect.model.repository.DuvidaRepository;
+import com.itb.inf3em.studyconnect.model.repository.MatriculaTrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
 import com.itb.inf3em.studyconnect.model.repository.TurmaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
@@ -40,6 +41,7 @@ class DuvidaTurmaAuthorizationTest {
     private AulaRepository aulaRepository;
     private TrilhaRepository trilhaRepository;
     private UsuarioRepository usuarioRepository;
+    private MatriculaTrilhaRepository matriculaRepository;
     private TurmaRepository turmaRepository;
     private DuvidaService duvidaService;
     private TurmaService turmaService;
@@ -50,12 +52,16 @@ class DuvidaTurmaAuthorizationTest {
         aulaRepository = mock(AulaRepository.class);
         trilhaRepository = mock(TrilhaRepository.class);
         usuarioRepository = mock(UsuarioRepository.class);
+        matriculaRepository = mock(MatriculaTrilhaRepository.class);
         turmaRepository = mock(TurmaRepository.class);
         AlunoAuthorization alunoAuthorization = new AlunoAuthorization(currentUser);
         TrilhaAuthorization trilhaAuthorization = new TrilhaAuthorization(currentUser);
         DuvidaAuthorization duvidaAuthorization = new DuvidaAuthorization(
                 currentUser, alunoAuthorization, trilhaAuthorization, aulaRepository, trilhaRepository);
-        duvidaService = new DuvidaService(duvidaRepository, usuarioRepository, aulaRepository, duvidaAuthorization);
+        AulaAuthorization aulaAuthorization = new AulaAuthorization(
+                currentUser, trilhaAuthorization, matriculaRepository);
+        duvidaService = new DuvidaService(
+                duvidaRepository, usuarioRepository, aulaRepository, duvidaAuthorization, aulaAuthorization);
         turmaService = new TurmaService(turmaRepository, usuarioRepository, new TurmaAuthorization(currentUser));
     }
 
@@ -73,6 +79,7 @@ class DuvidaTurmaAuthorizationTest {
         when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario(10L, "Aluno A")));
         when(aulaRepository.findById(200L)).thenReturn(Optional.of(aula));
         when(trilhaRepository.findById(100L)).thenReturn(Optional.of(trilha(100L, 30L)));
+        when(matriculaRepository.existsByAlunoIdAndTrilhaIdAndAtivoTrue(10L, 100L)).thenReturn(true);
         when(duvidaRepository.save(any(Duvida.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var criada = duvidaService.criar(Map.of(
@@ -80,6 +87,25 @@ class DuvidaTurmaAuthorizationTest {
 
         assertEquals(10L, criada.getAlunoId());
         assertEquals(100L, criada.getTrilhaId());
+    }
+
+    @Test
+    void alunoNaoCriaDuvidaEmAulaSemMatriculaOuNaoPublicada() {
+        authenticate(10L, TipoUsuario.ALUNO);
+        Aula aula = aula(200L, 100L);
+        Trilha trilha = trilha(100L, 30L);
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario(10L, "Aluno A")));
+        when(aulaRepository.findById(200L)).thenReturn(Optional.of(aula));
+        when(trilhaRepository.findById(100L)).thenReturn(Optional.of(trilha));
+        when(matriculaRepository.existsByAlunoIdAndTrilhaIdAndAtivoTrue(10L, 100L)).thenReturn(false);
+
+        assertThrows(AccessDeniedException.class, () -> duvidaService.criar(Map.of(
+                "alunoId", 10L, "aulaId", 200L, "mensagem", "Tentativa")));
+
+        when(matriculaRepository.existsByAlunoIdAndTrilhaIdAndAtivoTrue(10L, 100L)).thenReturn(true);
+        aula.setStatus("RASCUNHO");
+        assertThrows(AccessDeniedException.class, () -> duvidaService.criar(Map.of(
+                "alunoId", 10L, "aulaId", 200L, "mensagem", "Tentativa")));
     }
 
     // ── cenário 2: aluno A consulta sua dúvida → permitido ───────────────────

@@ -8,6 +8,7 @@ public class UsuarioDTO {
     private String nome;
     private String email;
     private String tipoUsuario;
+    private String fotoUrl;
     private boolean ativo;
 
     public UsuarioDTO(Usuario usuario) {
@@ -15,6 +16,7 @@ public class UsuarioDTO {
         this.nome = usuario.getNome();
         this.email = usuario.getEmail();
         this.tipoUsuario = usuario.getTipoUsuario().name();
+        this.fotoUrl = usuario.getFotoUrl();
         this.ativo = usuario.isAtivo();
     }
 
@@ -22,5 +24,6 @@ public class UsuarioDTO {
     public String getNome() { return nome; }
     public String getEmail() { return email; }
     public String getTipoUsuario() { return tipoUsuario; }
+    public String getFotoUrl() { return fotoUrl; }
     public boolean isAtivo() { return ativo; }
 }

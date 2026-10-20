@@ -64,6 +64,11 @@ public class MfaService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                         "Código inválido ou expirado."));
 
+        if (!usuario.isAtivo()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Conta suspensa. Entre em contato com o suporte.");
+        }
+
         validarDesafio(usuario.getId(), PURPOSE_LOGIN, codePuro);
 
         log.info("[MFA] Autenticação MFA concluída para usuarioId={}", usuario.getId());

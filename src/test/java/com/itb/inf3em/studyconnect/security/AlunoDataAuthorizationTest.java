@@ -58,10 +58,12 @@ class AlunoDataAuthorizationTest {
         aulaRepository = mock(AulaRepository.class);
         AlunoAuthorization alunoAuthorization = new AlunoAuthorization(currentUser);
         TrilhaAuthorization trilhaAuthorization = new TrilhaAuthorization(currentUser);
+        AulaAuthorization aulaAuthorization = new AulaAuthorization(
+                currentUser, trilhaAuthorization, matriculaRepository);
         matriculaService = new MatriculaTrilhaService(matriculaRepository, usuarioRepository, trilhaRepository,
                 aulaRepository, progressoRepository, mock(DuvidaRepository.class), alunoAuthorization, trilhaAuthorization);
         progressoService = new ProgressoAulaService(progressoRepository, aulaRepository, trilhaRepository,
-                matriculaRepository, alunoAuthorization);
+                matriculaRepository, alunoAuthorization, aulaAuthorization);
         perfilService = new PerfilAprendizadoService(perfilRepository, alunoAuthorization);
     }
 

@@ -46,8 +46,9 @@ class TrilhaAulaOwnershipTest {
         usuarioRepository = mock(UsuarioRepository.class);
         matriculaRepository = mock(MatriculaTrilhaRepository.class);
         TrilhaAuthorization authorization = new TrilhaAuthorization(currentUser);
+        AulaAuthorization aulaAuthorization = new AulaAuthorization(currentUser, authorization, matriculaRepository);
         trilhaService = new TrilhaService(trilhaRepository, usuarioRepository, matriculaRepository, authorization, currentUser);
-        aulaService = new AulaService(aulaRepository, trilhaRepository, authorization);
+        aulaService = new AulaService(aulaRepository, trilhaRepository, authorization, aulaAuthorization);
     }
 
     @AfterEach
@@ -143,6 +144,80 @@ class TrilhaAulaOwnershipTest {
 
         assertThrows(AccessDeniedException.class, () -> trilhaService.updateTrilha(100L, new Trilha()));
         assertThrows(AccessDeniedException.class, () -> aulaService.createAula(aula(100L)));
+    }
+
+    @Test
+    void semIdentidadeAutenticadaNaoPodeLerAulas() {
+        Trilha trilha = trilha(10L);
+        trilha.setId(100L);
+        Aula aula = aula(100L);
+        aula.setStatus("PUBLICADA");
+        when(trilhaRepository.findById(100L)).thenReturn(Optional.of(trilha));
+        when(aulaRepository.findById(500L)).thenReturn(Optional.of(aula));
+
+        assertThrows(AccessDeniedException.class, () -> aulaService.getAulasByTrilha(100L));
+        assertThrows(AccessDeniedException.class, () -> aulaService.getAulaById(500L));
+    }
+
+    @Test
+    void alunoMatriculadoListaSomenteAulasPublicadas() {
+        authenticate(10L, TipoUsuario.ALUNO);
+        Trilha trilha = trilha(20L);
+        trilha.setId(100L);
+        Aula publicada = aula(100L);
+        publicada.setStatus("PUBLICADA");
+        when(trilhaRepository.findById(100L)).thenReturn(Optional.of(trilha));
+        when(matriculaRepository.existsByAlunoIdAndTrilhaIdAndAtivoTrue(10L, 100L)).thenReturn(true);
+        when(aulaRepository.findByTrilhaIdAndStatusOrderByOrdem(100L, "PUBLICADA"))
+                .thenReturn(List.of(publicada));
+
+        assertEquals(List.of(publicada), aulaService.getAulasByTrilha(100L));
+        verify(aulaRepository).findByTrilhaIdAndStatusOrderByOrdem(100L, "PUBLICADA");
+    }
+
+    @Test
+    void alunoNaoMatriculadoNaoListaNemConsultaAulaPorId() {
+        authenticate(10L, TipoUsuario.ALUNO);
+        Trilha trilha = trilha(20L);
+        trilha.setId(100L);
+        Aula publicada = aula(100L);
+        publicada.setStatus("PUBLICADA");
+        when(trilhaRepository.findById(100L)).thenReturn(Optional.of(trilha));
+        when(aulaRepository.findById(500L)).thenReturn(Optional.of(publicada));
+        when(matriculaRepository.existsByAlunoIdAndTrilhaIdAndAtivoTrue(10L, 100L)).thenReturn(false);
+
+        assertThrows(AccessDeniedException.class, () -> aulaService.getAulasByTrilha(100L));
+        assertThrows(AccessDeniedException.class, () -> aulaService.getAulaById(500L));
+    }
+
+    @Test
+    void alunoMatriculadoNaoConsultaRascunhoPorId() {
+        authenticate(10L, TipoUsuario.ALUNO);
+        Trilha trilha = trilha(20L);
+        trilha.setId(100L);
+        Aula rascunho = aula(100L);
+        rascunho.setStatus("RASCUNHO");
+        when(trilhaRepository.findById(100L)).thenReturn(Optional.of(trilha));
+        when(aulaRepository.findById(500L)).thenReturn(Optional.of(rascunho));
+        when(matriculaRepository.existsByAlunoIdAndTrilhaIdAndAtivoTrue(10L, 100L)).thenReturn(true);
+
+        assertThrows(AccessDeniedException.class, () -> aulaService.getAulaById(500L));
+    }
+
+    @Test
+    void professorNaoConsultaAulaDeOutroProfessorMasAutorVisualizaRascunho() {
+        Trilha trilha = trilha(10L);
+        trilha.setId(100L);
+        Aula rascunho = aula(100L);
+        rascunho.setStatus("RASCUNHO");
+        when(trilhaRepository.findById(100L)).thenReturn(Optional.of(trilha));
+        when(aulaRepository.findById(500L)).thenReturn(Optional.of(rascunho));
+
+        authenticate(20L, TipoUsuario.PROFESSOR);
+        assertThrows(AccessDeniedException.class, () -> aulaService.getAulaById(500L));
+
+        authenticate(10L, TipoUsuario.PROFESSOR);
+        assertEquals(rascunho, aulaService.getAulaById(500L));
     }
 
     private void authenticate(Long usuarioId, TipoUsuario tipoUsuario) {

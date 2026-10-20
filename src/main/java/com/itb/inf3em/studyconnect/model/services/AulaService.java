@@ -1,9 +1,12 @@
 package com.itb.inf3em.studyconnect.model.services;
 
 import com.itb.inf3em.studyconnect.model.entity.Aula;
+import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
 import com.itb.inf3em.studyconnect.model.entity.Trilha;
 import com.itb.inf3em.studyconnect.model.repository.AulaRepository;
 import com.itb.inf3em.studyconnect.model.repository.TrilhaRepository;
+import com.itb.inf3em.studyconnect.security.AulaAuthorization;
+import com.itb.inf3em.studyconnect.security.AuthenticatedUser;
 import com.itb.inf3em.studyconnect.security.TrilhaAuthorization;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,31 +20,28 @@ public class AulaService {
     private final AulaRepository aulaRepository;
     private final TrilhaRepository trilhaRepository;
     private final TrilhaAuthorization trilhaAuthorization;
+    private final AulaAuthorization aulaAuthorization;
 
     public AulaService(AulaRepository aulaRepository,
                        TrilhaRepository trilhaRepository,
-                       TrilhaAuthorization trilhaAuthorization) {
+                       TrilhaAuthorization trilhaAuthorization,
+                       AulaAuthorization aulaAuthorization) {
         this.aulaRepository = aulaRepository;
         this.trilhaRepository = trilhaRepository;
         this.trilhaAuthorization = trilhaAuthorization;
+        this.aulaAuthorization = aulaAuthorization;
     }
 
     /**
      * Get all aulas for a specific trilha.
      */
     public List<Aula> getAulasByTrilha(Long trilhaId) {
-        trilhaRepository.findById(trilhaId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Trilha não encontrada com o id: " + trilhaId
-                ));
-
-        try {
-            return aulaRepository.findByTrilhaIdOrderByOrdem(trilhaId);
-        } catch (Exception ex) {
-            // Banco pode estar desatualizado (ex: coluna nova ainda não migrada)
-            return java.util.Collections.emptyList();
+        Trilha trilha = findTrilhaById(trilhaId);
+        AuthenticatedUser user = aulaAuthorization.requireCanReadTrilha(trilha);
+        if (user.tipoUsuario() == TipoUsuario.ALUNO) {
+            return aulaRepository.findByTrilhaIdAndStatusOrderByOrdem(trilhaId, "PUBLICADA");
         }
+        return aulaRepository.findByTrilhaIdOrderByOrdem(trilhaId);
     }
 
     /**
@@ -49,11 +49,10 @@ public class AulaService {
      * Throws exception if not found.
      */
     public Aula getAulaById(Long id) {
-        return aulaRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Aula não encontrada com o id: " + id
-                ));
+        Aula aula = findAulaById(id);
+        Trilha trilha = findTrilhaById(aula.getTrilhaId());
+        aulaAuthorization.requireCanReadAula(aula, trilha);
+        return aula;
     }
 
     /**
@@ -86,7 +85,7 @@ public class AulaService {
             return aulaRepository.save(aula);
         } catch (Exception ex) {
             throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao criar aula: " + ex.getMessage());
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao criar aula.");
         }
     }
 
@@ -94,7 +93,7 @@ public class AulaService {
      * Update a aula's information.
      */
     public Aula updateAula(Long id, Aula aulaUpdate) {
-        Aula aulaExistente = getAulaById(id);
+        Aula aulaExistente = findAulaById(id);
         requireManageTrilha(aulaExistente.getTrilhaId());
 
         // Update allowed fields
@@ -125,15 +124,24 @@ public class AulaService {
      * Delete a aula.
      */
     public void deleteAula(Long id) {
-        Aula aula = getAulaById(id);
+        Aula aula = findAulaById(id);
         requireManageTrilha(aula.getTrilhaId());
         aulaRepository.delete(aula);
     }
 
     private void requireManageTrilha(Long trilhaId) {
-        Trilha trilha = trilhaRepository.findById(trilhaId)
+        trilhaAuthorization.requireCanManage(findTrilhaById(trilhaId));
+    }
+
+    private Aula findAulaById(Long id) {
+        return aulaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Trilha nao encontrada."));
-        trilhaAuthorization.requireCanManage(trilha);
+                        HttpStatus.NOT_FOUND, "Aula nao encontrada com o id: " + id));
+    }
+
+    private Trilha findTrilhaById(Long trilhaId) {
+        return trilhaRepository.findById(trilhaId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Trilha nao encontrada com o id: " + trilhaId));
     }
 }
