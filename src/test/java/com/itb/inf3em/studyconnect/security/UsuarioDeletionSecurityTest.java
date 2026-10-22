@@ -15,6 +15,7 @@ import com.itb.inf3em.studyconnect.model.repository.TurmaRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
 import com.itb.inf3em.studyconnect.model.services.CredentialValidationService;
 import com.itb.inf3em.studyconnect.model.services.EmailVerificationService;
+import com.itb.inf3em.studyconnect.model.services.GoogleAuthService;
 import com.itb.inf3em.studyconnect.model.services.MfaService;
 import com.itb.inf3em.studyconnect.model.services.UsuarioService;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,7 @@ class UsuarioDeletionSecurityTest {
 
     private UsuarioRepository usuarioRepository;
     private MfaService mfaService;
+    private GoogleAuthService googleAuthService;
     private UsuarioService usuarioService;
     private Usuario admin;
     private Usuario target;
@@ -45,6 +47,7 @@ class UsuarioDeletionSecurityTest {
     void setUp() {
         usuarioRepository = mock(UsuarioRepository.class);
         mfaService = mock(MfaService.class);
+        googleAuthService = mock(GoogleAuthService.class);
         BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
         usuarioService = new UsuarioService();
@@ -66,6 +69,7 @@ class UsuarioDeletionSecurityTest {
         ReflectionTestUtils.setField(usuarioService, "emailVerificationService",
                 mock(EmailVerificationService.class));
         ReflectionTestUtils.setField(usuarioService, "mfaService", mfaService);
+        ReflectionTestUtils.setField(usuarioService, "googleAuthService", googleAuthService);
 
         admin = usuario(ADMIN_ID, TipoUsuario.ADMIN, passwordEncoder.encode("senha-admin"));
         admin.setMfaHabilitado(true);
@@ -94,13 +98,14 @@ class UsuarioDeletionSecurityTest {
     }
 
     @Test
-    void requestDeleteChallengeEnviaCodigoGoogleSemPedirSenha() {
+    void requestDeleteChallengeExigeProvaGoogleRecente() {
         admin.setSenha(null);
         admin.setGoogleId("google-admin");
 
-        usuarioService.requestDeleteChallenge(TARGET_ID, ADMIN_ID, null);
+        usuarioService.requestDeleteChallenge(TARGET_ID, ADMIN_ID, null, "valid-google-token");
 
         verify(mfaService).iniciarDesafioExclusao(admin);
+        verify(googleAuthService).validarIdentidadeGoogle(ADMIN_ID, "valid-google-token");
     }
 
     @Test
@@ -109,7 +114,7 @@ class UsuarioDeletionSecurityTest {
                 usuarioService.requestDeleteChallenge(TARGET_ID, ADMIN_ID, null))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_REQUEST));
+                        .isEqualTo(HttpStatus.UNAUTHORIZED));
 
         verify(mfaService, never()).iniciarDesafioExclusao(any());
     }
@@ -162,6 +167,7 @@ class UsuarioDeletionSecurityTest {
         admin.setGoogleId("google-admin");
         DeleteAccountRequestDTO dto = new DeleteAccountRequestDTO();
         dto.setCodigoMfa("123456");
+        dto.setGoogleIdToken("valid-google-token");
 
         usuarioService.deleteWithAuth(ADMIN_ID, ADMIN_ID, dto);
 
@@ -174,6 +180,7 @@ class UsuarioDeletionSecurityTest {
         admin.setSenha(null);
         admin.setGoogleId("google-admin");
         DeleteAccountRequestDTO dto = new DeleteAccountRequestDTO();
+        dto.setGoogleIdToken("valid-google-token");
 
         assertThatThrownBy(() -> usuarioService.deleteWithAuth(ADMIN_ID, ADMIN_ID, dto))
                 .isInstanceOf(ResponseStatusException.class)
@@ -182,6 +189,16 @@ class UsuarioDeletionSecurityTest {
 
         verify(usuarioRepository, never()).deleteById(ADMIN_ID);
         verify(mfaService, never()).validarCodigoExclusao(anyLong(), anyString());
+    }
+
+    @Test
+    void accountSecurityExponeSomenteFlagsDosMetodosSemHash() {
+        admin.setGoogleId("google-admin");
+        var methods = usuarioService.getAccountSecurity(ADMIN_ID);
+
+        assertThat(methods.hasPassword()).isTrue();
+        assertThat(methods.hasGoogle()).isTrue();
+        assertThat(methods.mfaEnabled()).isTrue();
     }
 
     @Test

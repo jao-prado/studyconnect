@@ -38,6 +38,7 @@ public class SecurityConfig {
                         .requestMatchers("/health").permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/login",
+                                "/api/v1/auth/register",
                                 "/api/v1/auth/google",
                                 "/api/v1/auth/verify-email",
                                 "/api/v1/auth/resend-verification",

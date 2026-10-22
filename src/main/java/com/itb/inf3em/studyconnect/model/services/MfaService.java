@@ -42,8 +42,15 @@ public class MfaService {
      */
     @Transactional
     public LoginResponseDTO iniciarDesafio(Usuario usuario) {
+        return iniciarDesafio(usuario, false);
+    }
+
+    @Transactional
+    public LoginResponseDTO iniciarDesafio(Usuario usuario, boolean onboardingRequired) {
         gerarEPersistirDesafio(usuario, PURPOSE_LOGIN);
-        return new LoginResponseDTO(usuario.getEmail(), true);
+        LoginResponseDTO response = new LoginResponseDTO(usuario.getEmail(), true);
+        response.setOnboardingRequired(onboardingRequired);
+        return response;
     }
 
     /**

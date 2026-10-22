@@ -13,6 +13,7 @@ public class LoginResponseDTO {
     private long expiresIn;
     private boolean mfaPendente;
     private boolean mfaHabilitado;
+    private boolean onboardingRequired;
 
     /** Construtor para login completo (sem MFA pendente). */
     public LoginResponseDTO(Long id, String nome, String role, String fotoUrl, String email, boolean ativo,
@@ -57,4 +58,6 @@ public class LoginResponseDTO {
     public long getExpiresIn() { return expiresIn; }
     public boolean isMfaPendente() { return mfaPendente; }
     public boolean isMfaHabilitado() { return mfaHabilitado; }
+    public boolean isOnboardingRequired() { return onboardingRequired; }
+    public void setOnboardingRequired(boolean onboardingRequired) { this.onboardingRequired = onboardingRequired; }
 }

@@ -1,11 +1,15 @@
 package com.itb.inf3em.studyconnect.controller;
 
 import com.itb.inf3em.studyconnect.model.dto.ForgotPasswordRequestDTO;
+import com.itb.inf3em.studyconnect.model.dto.RegisterRequestDTO;
 import com.itb.inf3em.studyconnect.model.dto.LoginRequestDTO;
 import com.itb.inf3em.studyconnect.model.dto.LoginResponseDTO;
 import com.itb.inf3em.studyconnect.model.dto.MfaToggleRequestDTO;
 import com.itb.inf3em.studyconnect.model.dto.MfaVerifyRequestDTO;
 import com.itb.inf3em.studyconnect.model.dto.ResetPasswordRequestDTO;
+import com.itb.inf3em.studyconnect.model.dto.DeleteAccountChallengeRequestDTO;
+import com.itb.inf3em.studyconnect.model.dto.DeleteAccountRequestDTO;
+import com.itb.inf3em.studyconnect.model.services.UsuarioService;
 import com.itb.inf3em.studyconnect.model.services.AuthService;
 import com.itb.inf3em.studyconnect.model.services.MfaService;
 import com.itb.inf3em.studyconnect.model.services.PasswordResetService;
@@ -25,6 +29,12 @@ public class AuthController {
     @Autowired private PasswordResetService passwordResetService;
     @Autowired private MfaService mfaService;
     @Autowired private CurrentUser currentUser;
+    @Autowired private UsuarioService usuarioService;
+
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody RegisterRequestDTO request) {
+        return ResponseEntity.status(201).body(authService.registrar(request));
+    }
 
     @PostMapping("/login")
     public LoginResponseDTO login(@RequestBody LoginRequestDTO request) {
@@ -63,5 +73,24 @@ public class AuthController {
         AuthenticatedUser user = currentUser.require();
         mfaService.desabilitarMfa(user.usuarioId(), request.getSenha());
         return ResponseEntity.ok(Map.of("message", "MFA desabilitado com sucesso."));
+    }
+
+    @GetMapping("/account-security")
+    public ResponseEntity<?> accountSecurity() {
+        return ResponseEntity.ok(usuarioService.getAccountSecurity(currentUser.require().usuarioId()));
+    }
+
+    @PostMapping("/account-deletion/challenge")
+    public ResponseEntity<Map<String, Object>> accountDeletionChallenge(
+            @RequestBody DeleteAccountChallengeRequestDTO request) {
+        boolean mfaRequired = usuarioService.requestOwnDeleteChallenge(
+                currentUser.require().usuarioId(), request.getSenha(), request.getGoogleIdToken());
+        return ResponseEntity.ok(Map.of("mfaRequired", mfaRequired));
+    }
+
+    @DeleteMapping("/account-deletion")
+    public ResponseEntity<Void> deleteOwnAccount(@RequestBody DeleteAccountRequestDTO request) {
+        usuarioService.deleteOwnWithAuth(currentUser.require().usuarioId(), request);
+        return ResponseEntity.noContent().build();
     }
 }

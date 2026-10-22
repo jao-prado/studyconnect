@@ -2,9 +2,13 @@ package com.itb.inf3em.studyconnect.model.services;
 
 import com.itb.inf3em.studyconnect.model.dto.LoginRequestDTO;
 import com.itb.inf3em.studyconnect.model.dto.LoginResponseDTO;
+import com.itb.inf3em.studyconnect.model.dto.RegisterRequestDTO;
+import com.itb.inf3em.studyconnect.model.dto.RegistrationResponseDTO;
+import com.itb.inf3em.studyconnect.model.entity.MfaCode;
 import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
 import com.itb.inf3em.studyconnect.model.entity.Usuario;
 import com.itb.inf3em.studyconnect.model.repository.EmailVerificationTokenRepository;
+import com.itb.inf3em.studyconnect.model.repository.MfaCodeRepository;
 import com.itb.inf3em.studyconnect.model.repository.UsuarioRepository;
 import com.itb.inf3em.studyconnect.security.JwtService;
 import org.slf4j.Logger;
@@ -13,12 +17,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Base64;
 
 @Service
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+    private static final String REGISTRATION_PURPOSE = "REGISTRATION";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Autowired
     private UsuarioRepository usuarioRepository;
@@ -37,6 +49,78 @@ public class AuthService {
 
     @Autowired
     private MfaService mfaService;
+
+    @Autowired
+    private UsuarioService usuarioService;
+
+    @Autowired
+    private MfaCodeRepository mfaCodeRepository;
+
+    @Autowired
+    private EmailVerificationService emailVerificationService;
+
+    public RegistrationResponseDTO registrar(RegisterRequestDTO request) {
+        Usuario novo = new Usuario();
+        novo.setNome(request.getNome());
+        novo.setEmail(request.getEmail());
+        novo.setSenha(request.getSenha());
+        Usuario salvo = usuarioService.save(novo);
+
+        byte[] tokenBytes = new byte[32];
+        SECURE_RANDOM.nextBytes(tokenBytes);
+        String registrationToken = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
+        String tokenHash = passwordEncoder.encode(registrationToken);
+        mfaCodeRepository.save(new MfaCode(
+                salvo.getId(),
+                REGISTRATION_PURPOSE,
+                tokenHash,
+                Instant.now().plus(30, ChronoUnit.MINUTES)
+        ));
+        return new RegistrationResponseDTO(salvo.getId(), salvo.getEmail(), registrationToken);
+    }
+
+    @Transactional
+    public LoginResponseDTO concluirCadastro(String email, String code, String registrationToken) {
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
+        Usuario usuario = usuarioRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "Código inválido ou expirado."));
+        MfaCode completion = mfaCodeRepository
+                .findByUsuarioIdAndPurpose(usuario.getId(), REGISTRATION_PURPOSE)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "Código inválido ou expirado."));
+
+        if (completion.isUsed()
+                || Instant.now().isAfter(completion.getExpiresAt())
+                || registrationToken == null
+                || !passwordEncoder.matches(registrationToken, completion.getCodeHash())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Código inválido ou expirado.");
+        }
+
+        emailVerificationService.verificar(normalizedEmail, code);
+        completion.setUsed(true);
+        mfaCodeRepository.save(completion);
+
+        LoginResponseDTO response;
+        if (usuario.getTipoUsuario() == TipoUsuario.ADMIN || usuario.isMfaHabilitado()) {
+            response = mfaService.iniciarDesafio(usuario, true);
+            response.setOnboardingRequired(true);
+        } else {
+            response = new LoginResponseDTO(
+                    usuario.getId(),
+                    usuario.getNome(),
+                    usuario.getTipoUsuario().name(),
+                    usuario.getFotoUrl(),
+                    usuario.getEmail(),
+                    usuario.isAtivo(),
+                    jwtService.generateToken(usuario),
+                    jwtService.getExpirationSeconds(),
+                    usuario.isMfaHabilitado()
+            );
+            response.setOnboardingRequired(true);
+        }
+        return response;
+    }
 
     public LoginResponseDTO login(LoginRequestDTO request) {
         long t0 = System.currentTimeMillis();

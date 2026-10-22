@@ -131,6 +131,64 @@ class GoogleAuthServiceTest {
     }
 
     @Test
+    void novaContaGoogleSinalizaOnboardingMasContaExistenteNao() throws Exception {
+        expectTokenInfo("new-google-token", validPayload());
+        when(usuarioRepository.findByGoogleId("1234567890")).thenReturn(Optional.empty());
+        when(usuarioRepository.findByEmail("user@example.com")).thenReturn(Optional.empty());
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> {
+            Usuario created = invocation.getArgument(0);
+            created.setId(8L);
+            return created;
+        });
+        when(jwtService.generateToken(any(Usuario.class))).thenReturn("access-token");
+        when(jwtService.getExpirationSeconds()).thenReturn(3600L);
+
+        var response = service.autenticar("new-google-token");
+
+        assertThat(response.isOnboardingRequired()).isTrue();
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+    }
+
+    @Test
+    void provaGoogleDeOutroUsuarioNaoConfirmaSessaoAutenticada() throws Exception {
+        Usuario usuario = new Usuario();
+        usuario.setId(7L);
+        usuario.setGoogleId("1234567890");
+        when(usuarioRepository.findById(7L)).thenReturn(Optional.of(usuario));
+        expectTokenInfo("wrong-owner-token", Map.of(
+                "aud", CLIENT_ID,
+                "iss", "accounts.google.com",
+                "email_verified", "true",
+                "sub", "other-google-id"
+        ));
+
+        assertThatThrownBy(() -> service.validarIdentidadeGoogle(7L, "wrong-owner-token"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.UNAUTHORIZED));
+    }
+
+    @Test
+    void provaGoogleRecenteEObrigatoriaParaConfirmacaoDeExclusao() throws Exception {
+        Usuario usuario = new Usuario();
+        usuario.setId(7L);
+        usuario.setGoogleId("1234567890");
+        when(usuarioRepository.findById(7L)).thenReturn(Optional.of(usuario));
+        Map<String, Object> recentPayload = validPayload();
+        recentPayload.put("iat", System.currentTimeMillis() / 1000);
+        expectTokenInfo("recent-owner-token", recentPayload);
+        Map<String, Object> stalePayload = validPayload();
+        stalePayload.put("iat", System.currentTimeMillis() / 1000 - 601);
+        expectTokenInfo("stale-owner-token", stalePayload);
+
+        service.validarIdentidadeGoogle(7L, "recent-owner-token");
+        assertThatThrownBy(() -> service.validarIdentidadeGoogle(7L, "stale-owner-token"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.UNAUTHORIZED));
+    }
+
+    @Test
     void loginGoogleDeUsuarioInativoNaoEmiteJwtNemIniciaMfa() throws Exception {
         expectTokenInfo("inactive-token", validPayload());
 

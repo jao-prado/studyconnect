@@ -62,7 +62,8 @@ public class UsuarioController {
             @RequestBody(required = false) Map<String, String> body) {
         AuthenticatedUser requester = currentUser.requireSameUserOrAdmin(id);
         String senha = body == null ? null : body.get("senha");
-        usuarioService.requestDeleteChallenge(id, requester.usuarioId(), senha);
+        String googleIdToken = body == null ? null : body.get("googleIdToken");
+        usuarioService.requestDeleteChallenge(id, requester.usuarioId(), senha, googleIdToken);
         return ResponseEntity.ok(Map.of("message", "Código enviado para o seu e-mail."));
     }
 

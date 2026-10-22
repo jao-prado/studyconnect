@@ -1,6 +1,7 @@
 package com.itb.inf3em.studyconnect.model.services;
 
 import com.itb.inf3em.studyconnect.model.dto.AtualizarPerfilDTO;
+import com.itb.inf3em.studyconnect.model.dto.AccountSecurityDTO;
 import com.itb.inf3em.studyconnect.model.dto.DeleteAccountRequestDTO;
 import com.itb.inf3em.studyconnect.model.entity.Trilha;
 import com.itb.inf3em.studyconnect.model.entity.TipoUsuario;
@@ -44,6 +45,7 @@ public class UsuarioService {
     @Autowired private CredentialValidationService    credentialValidationService;
     @Autowired private EmailVerificationService       emailVerificationService;
     @Autowired private MfaService                     mfaService;
+    @Autowired private GoogleAuthService              googleAuthService;
 
     public List<Usuario> findAll() {
         return usuarioRepository.findAll();
@@ -113,23 +115,49 @@ public class UsuarioService {
         return deleted;
     }
 
-    /** Confere a senha local ou a identidade Google e envia o desafio de exclusão. */
+    public AccountSecurityDTO getAccountSecurity(long usuarioId) {
+        Usuario usuario = findById(usuarioId);
+        return new AccountSecurityDTO(
+                usuario.getSenha() != null,
+                usuario.getGoogleId() != null,
+                usuario.isMfaHabilitado()
+        );
+    }
+
+    /** Legacy endpoint. Google accounts must now present a fresh Google ID token. */
     public void requestDeleteChallenge(long targetId, long requesterId, String senha) {
+        requestDeleteChallenge(targetId, requesterId, senha, null);
+    }
+
+    public void requestDeleteChallenge(long targetId, long requesterId, String senha, String googleIdToken) {
         Usuario target = findById(targetId);
         Usuario requester = findById(requesterId);
         validarPermissaoExclusao(targetId, requester);
-
-        if (senha == null || senha.isBlank()) {
-            if (requester.getGoogleId() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Confirmação por código disponível apenas para contas Google.");
-            }
-        } else if (requester.getSenha() == null
-                || !passwordEncoder.matches(senha, requester.getSenha())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha incorreta.");
-        }
-
+        validarProvaExclusao(requester, senha, googleIdToken);
         mfaService.iniciarDesafioExclusao(requester);
+    }
+
+    /** Mobile endpoint scoped exclusively to the authenticated account. */
+    public boolean requestOwnDeleteChallenge(long usuarioId, String senha, String googleIdToken) {
+        Usuario usuario = findById(usuarioId);
+        validarProvaExclusao(usuario, senha, googleIdToken);
+        boolean mfaRequired = exigeMfaExclusao(usuario);
+        if (mfaRequired) mfaService.iniciarDesafioExclusao(usuario);
+        return mfaRequired;
+    }
+
+    @Transactional
+    public void deleteOwnWithAuth(long usuarioId, DeleteAccountRequestDTO dto) {
+        Usuario usuario = findById(usuarioId);
+        validarProvaExclusao(usuario, dto.getSenha(), dto.getGoogleIdToken());
+        if (exigeMfaExclusao(usuario)) {
+            if (dto.getCodigoMfa() == null || dto.getCodigoMfa().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Código de segurança obrigatório para excluir esta conta.");
+            }
+            mfaService.validarCodigoExclusao(usuarioId, dto.getCodigoMfa());
+        }
+        excluirDependenciasEUsuario(usuarioId, usuario);
     }
 
     /**
@@ -153,14 +181,7 @@ public class UsuarioService {
         validarPermissaoExclusao(targetId, requester);
 
         boolean senhaInformada = dto.getSenha() != null && !dto.getSenha().isBlank();
-        if (senhaInformada) {
-            if (requester.getSenha() == null
-                    || !passwordEncoder.matches(dto.getSenha(), requester.getSenha())) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha incorreta.");
-            }
-        } else if (requester.getGoogleId() == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha incorreta.");
-        }
+        validarProvaExclusao(requester, dto.getSenha(), dto.getGoogleIdToken());
 
         // Contas Google confirmam por código; contas locais mantêm senha e MFA.
         boolean exigeCodigo = !senhaInformada || requester.isMfaHabilitado()
@@ -188,6 +209,29 @@ public class UsuarioService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Apenas administradores podem excluir outros usuários.");
         }
+    }
+
+    private void validarProvaExclusao(Usuario usuario, String senha, String googleIdToken) {
+        boolean senhaInformada = senha != null && !senha.isBlank();
+        boolean tokenGoogleInformado = googleIdToken != null && !googleIdToken.isBlank();
+        if (!senhaInformada && !tokenGoogleInformado && usuario.getGoogleId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha incorreta.");
+        }
+        if (senhaInformada == tokenGoogleInformado) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Confirme a conta com exatamente um método de autenticação.");
+        }
+        if (senhaInformada) {
+            if (usuario.getSenha() == null || !passwordEncoder.matches(senha, usuario.getSenha())) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Senha incorreta.");
+            }
+            return;
+        }
+        googleAuthService.validarIdentidadeGoogle(usuario.getId(), googleIdToken);
+    }
+
+    private boolean exigeMfaExclusao(Usuario usuario) {
+        return usuario.isMfaHabilitado() || usuario.getTipoUsuario() == TipoUsuario.ADMIN;
     }
 
     // ── privado ───────────────────────────────────────────────────────────────

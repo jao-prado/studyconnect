@@ -66,6 +66,7 @@ public class GoogleIdTokenValidator {
             claims.put("email_verified", payload.getEmailVerified());
             claims.put("aud", payload.getAudience());
             claims.put("iss", payload.getIssuer());
+            claims.put("iat", payload.getIssuedAtTimeSeconds());
             copyOptionalClaim(payload, claims, "name");
             copyOptionalClaim(payload, claims, "picture");
             return claims;
